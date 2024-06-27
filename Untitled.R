@@ -1,4 +1,4 @@
-### 1.1 Calculate modified PMN on raw Acoustic Files #####
+### 1.1 Calculate and extract modified PMN on raw Acoustic Files #####
 
 ### Define functions for PMN calculation #####
 
