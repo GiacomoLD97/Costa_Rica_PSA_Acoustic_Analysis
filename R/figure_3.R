@@ -61,11 +61,7 @@ df_summarised_10min <- df %>%
 wasserstein10min <- fread('data/wasserstein_dist_results_10minavg.csv')
 
 p1 <- df_summarised_10min %>% 
-  # filter(Type == "Reference_Forest") %>% # Plot 1
-  # filter(Type %in% c("Reference_Forest", "Pasture")) %>% # Plot 2
-  # filter(Type %in% c("Reference_Forest", "Pasture", "Natural_Regeneration")) %>% # Plot 3
   ggplot(aes(x = tod, y = mean_PMN, color = Type)) + 
-  # geom_ribbon(aes(ymin = mean_PMN - sd_PMN, ymax = mean_PMN + sd_PMN), color = NA, alpha = 0.3) +
   geom_line(linewidth = 0.8) +  
   theme_classic() +
   theme(strip.background = element_blank()) +
@@ -82,12 +78,12 @@ p1 <- df_summarised_10min %>%
   #          aes(x = tod, y = 10000, fill = Type), inherit.aes = FALSE) +
   scale_fill_manual(values = c("#4477AA", "#CCBB44", "#EE6677", "#228833"), 
                     guide = 'none') +
-  # scale_y_continuous(labels = scales::comma, limits = c(1e5, 8.5e5)) +
-  # guides(color = guide_legend(position = "inside")) +
-  theme(#legend.position.inside = c(0.8, 0.9),
-        legend.title = element_blank()) 
-# geom_vline(color = 'grey50', xintercept = as.POSIXct("2023-12-13 00:00:00") + minutes(315), linetype = 'dashed', linewidth = 0.5) +
-# geom_vline(color = 'grey50', xintercept = as.POSIXct("2023-12-13 00:00:00") + minutes(1070), linetype = 'dashed', linewidth = 0.5)
+  scale_y_continuous(labels = scales::comma, limits = c(1e5, 8.5e5)) +
+  guides(color = guide_legend(position = "inside")) +
+  theme(legend.position.inside = c(0.8, 0.9),
+        legend.title = element_blank()) +
+geom_vline(color = 'grey50', xintercept = as.POSIXct("2023-12-13 00:00:00") + minutes(315), linetype = 'dashed', linewidth = 0.5) +
+geom_vline(color = 'grey50', xintercept = as.POSIXct("2023-12-13 00:00:00") + minutes(1070), linetype = 'dashed', linewidth = 0.5)
 
 p1
 
