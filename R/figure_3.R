@@ -9,8 +9,10 @@ library(doParallel)
 library(tidyverse)
 
 `%notin%` <- Negate(`%in%`)
+breaks <- c(0, seq(1, 24))
+labels <- paste0(head(breaks, -1), "-", tail(breaks, -1), " kHz")
 
-type_table <- fread('/Users/johanvandenhoogen/ETH/Projects/costa_rica/sites_type_table.csv')
+type_table <- fread('data/sites_type_table.csv')
 
 # Read all the files in the folder
 # files <- list.files('/Users/johanvandenhoogen/ETH/Projects/costa_rica/site_freq_data', full.names = T)
@@ -19,30 +21,20 @@ type_table <- fread('/Users/johanvandenhoogen/ETH/Projects/costa_rica/sites_type
 # Combine with type info
 # df <- df %>% left_join(., type_table %>% select(-MicType), by = "Site")
 # fwrite(df, '/Users/johanvandenhoogen/ETH/Projects/costa_rica/site_freq_data_full.csv')
-df <- fread('/Users/johanvandenhoogen/ETH/Projects/costa_rica/site_freq_data_full.csv') %>% 
+
+df <- fread('data/site_freq_data_full.csv') %>% 
   mutate(Type = ifelse(Type == "", NA, Type)) %>% 
   na.omit() %>% 
   filter(Minute %notin% c(385, 386, 1080)) 
   
-breaks <- c(0, seq(1, 24))
-labels <- paste0(head(breaks, -1), "-", tail(breaks, -1), " kHz")
-
 # Summarise data by type and write to file
 df_type_summary <- df %>%
   group_by(Type, Minute, freq_category) %>%
   summarise(
     mean_PMN = mean(sum_PMN, na.rm = TRUE))
 
-fwrite(df_type_summary, '/Users/johanvandenhoogen/ETH/Projects/costa_rica/site_freq_data_perType_summarised.csv')
-df_type_summary <- fread('/Users/johanvandenhoogen/ETH/Projects/costa_rica/site_freq_data_perType_summarised.csv')
-
-# # Plot by frequency bins, for each type
-df_type_summary %>%
-  ggplot(aes(x = Minute, y = mean_PMN, color = Type)) +
-  geom_line(linewidth = 0.04) +
-  scale_color_manual(values = c("#4477AA", "#CCBB44", "#EE6677", "#228833")) +
-  facet_wrap(~ Type) +
-  theme_minimal()
+fwrite(df_type_summary, 'data/site_freq_data_perType_summarised.csv')
+df_type_summary <- fread('data/site_freq_data_perType_summarised.csv')
 
 # Plot by types, for each frequency bin
 p <- df_type_summary %>% 
@@ -55,20 +47,7 @@ p <- df_type_summary %>%
   theme_minimal() +
   ylab("Mean Power-minus-Noise") 
 
-p
-
-# df %>%
-#   filter(freq_category %in% c('5-6 kHz', '6-7 kHz', '7-8 kHz', '8-9 kHz')) %>% 
-#   group_by(Type, Minute) %>%
-#   summarise(
-#     mean_PMN = mean(sum_PMN, na.rm = TRUE)) %>% 
-#   filter(Minute %notin% c(385, 386, 1080)) %>%
-#   ggplot(aes(x = Minute, y = mean_PMN, color = Type)) + 
-#   scale_color_manual(values = c("#4477AA", "#CCBB44", "#EE6677", "#228833")) +
-#   geom_line() +  
-#   theme_minimal() +
-#   ylab("Mean Power-minus-Noise") 
-
+ggsave('figures/pmn_per_bin.pdf', plot = p)
 
 df_summarised_10min <- df %>%
   # filter(freq_category %in% c('5-6 kHz', '6-7 kHz', '7-8 kHz', '8-9 kHz')) %>%
@@ -79,7 +58,7 @@ df_summarised_10min <- df %>%
     mean_PMN = mean(sum_PMN, na.rm = TRUE)) %>% 
   mutate(tod = as.POSIXct("2023-12-13 00:00:00") + minutes(nearest_10))
 
-wasserstein10min <- fread('/Users/johanvandenhoogen/ETH/Projects/costa_rica/wasserstein_dist_results_10minavg.csv')
+wasserstein10min <- fread('data/wasserstein_dist_results_10minavg.csv')
 
 p1 <- df_summarised_10min %>% 
   # filter(Type == "Reference_Forest") %>% # Plot 1
@@ -112,7 +91,7 @@ p1 <- df_summarised_10min %>%
 
 p1
 
-ggsave('/Users/johanvandenhoogen/ETH/Projects/costa_rica/figures/fig3_draft.pdf', p1, width = 6, height = 5, dpi = 300)
+ggsave('figures/fig3_draft.pdf', p1, width = 6, height = 5, dpi = 300)
 
 # legend <- cowplot::get_legend(p1)
 
