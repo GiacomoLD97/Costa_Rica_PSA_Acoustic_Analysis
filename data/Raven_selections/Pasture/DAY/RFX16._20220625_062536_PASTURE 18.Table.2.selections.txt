@@ -1,0 +1,2 @@
+Selection	View	Channel	Begin Time (s)	End Time (s)	Low Freq (Hz)	High Freq (Hz)	Delta Time (s)	Delta Freq (Hz)	Avg Power Density (dB FS/Hz)	Annotation
+1	Spectrogram 1	1	15900.277520718	15959.999979167	8438.163	11109.541	59.7225	2671.378	-66.63	Insects
