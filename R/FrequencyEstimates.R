@@ -2,6 +2,8 @@
 
 ### 1. LOAD PACKAGES ##############################
 
+p_load(RColorBrewer)
+
 ### 2. LOAD AND PROCESS ALL THE SELECTION DATA ##############################
 
 #Pastures
@@ -108,6 +110,7 @@ unique(FrequencyEstimates$Annotation)
 FrequencyEstimates$Annotation <- ifelse(grepl("ins", FrequencyEstimates$Annotation, ignore.case = TRUE), "Insects", FrequencyEstimates$Annotation)
 FrequencyEstimates$Annotation <- ifelse(grepl("inns", FrequencyEstimates$Annotation, ignore.case = TRUE), "Insects", FrequencyEstimates$Annotation)
 FrequencyEstimates$Annotation <- ifelse(grepl("bir", FrequencyEstimates$Annotation, ignore.case = TRUE), "Birds", FrequencyEstimates$Annotation)
+FrequencyEstimates$Annotation <- ifelse(grepl("dom", FrequencyEstimates$Annotation, ignore.case = TRUE), "Domestic", FrequencyEstimates$Annotation)
 FrequencyEstimates$Annotation <- ifelse(grepl("mamm", FrequencyEstimates$Annotation, ignore.case = TRUE), "Mammals", FrequencyEstimates$Annotation)
 FrequencyEstimates$Annotation <- ifelse(grepl("ins", FrequencyEstimates$Annotation, ignore.case = TRUE), "Insects", FrequencyEstimates$Annotation)
 FrequencyEstimates$Annotation <- ifelse(grepl("amph", FrequencyEstimates$Annotation, ignore.case = TRUE), "Amphibians", FrequencyEstimates$Annotation)
@@ -115,3 +118,138 @@ FrequencyEstimates$Annotation <- ifelse(grepl("bat", FrequencyEstimates$Annotati
 FrequencyEstimates$Annotation <- ifelse(grepl("unk", FrequencyEstimates$Annotation, ignore.case = TRUE), "Unknown", FrequencyEstimates$Annotation)
 FrequencyEstimates$Annotation <- ifelse(grepl("v", FrequencyEstimates$Annotation, ignore.case = TRUE), "Unknown", FrequencyEstimates$Annotation)
 FrequencyEstimates$Annotation[FrequencyEstimates$Annotation== ""] <- "Unknown"
+
+# Proportion of domestic mammal and human noises that make up the mammal calls
+
+totalmammal <- FrequencyEstimates %>% subset(Annotation %in% c("Domestic", "Mammals", "Humans")) %>% nrow()
+
+wildmammal <- FrequencyEstimates %>% subset(Annotation == "Mammals") %>% nrow()
+
+wildmammal/totalmammal * 100
+
+#31.82% of annotations are wild mammals, most are domestic and human
+
+#Filter for only four main classes, combine domestic into mammal
+
+ClassFrequencyEstimates <- FrequencyEstimates %>% subset(Annotation %in% c("Birds", "Insects", "Mammals", "Amphibians", "Domestic"))
+ClassFrequencyEstimates$Annotation <- ifelse(grepl("dom", ClassFrequencyEstimates$Annotation, ignore.case = TRUE), "Mammals", ClassFrequencyEstimates$Annotation)
+
+#Add middle frequency column
+
+ClassFrequencyEstimates <- ClassFrequencyEstimates %>% mutate(MidFreq = ((LowFreq + HighFreq)/2))
+
+### 4. FIGURE 2B VISUALIZE THE FREQUENCY RANGES ##############################
+
+#Use Spectral color palette
+custom_colors <- rev(brewer.pal(4, "Spectral"))
+
+#Set levels of factor for labelling
+ClassFrequencyEstimates$Annotation <- factor(ClassFrequencyEstimates$Annotation, levels=c("Mammals", "Amphibians", "Birds", "Insects"))
+
+#Add meaningless column for mapping
+ClassFrequencyEstimates <- ClassFrequencyEstimates %>%
+  mutate(density = case_when(
+    Annotation == "Mammals" ~ 0.0032,
+    Annotation == "Amphibians" ~ 0.0024,
+    Annotation == "Birds" ~ 0.0016,
+    Annotation == "Insects" ~ 0.0008,
+    TRUE ~ NA_real_
+  ))
+
+#Plot
+ClassFrequencyEstimates %>% 
+  ggplot(aes(x = MidFreq, fill = Annotation, color = Annotation)) +
+  geom_density(alpha = 0.5) +  
+  labs(
+    title = "Density of Call Frequencies by Taxonomic Group",
+    x = "Middle Frequency of Call",
+    y = "Density"
+  ) +
+  scale_x_continuous(
+    breaks = seq(0, 15000, by = 1000),  # Set x-axis breaks every 1000 units
+    limits = c(0, 15000)                # Limit x-axis to 0-15,000
+  ) +
+  scale_fill_manual(values = custom_colors) +  # Set custom fill colors from the "spectral" palette
+  scale_color_manual(values = custom_colors) +  # Set custom line colors from the "spectral" palette
+  theme_minimal() +
+  theme(legend.position = "top") +
+  geom_boxplot(
+    data = ClassFrequencyEstimates, 
+    aes(x = MidFreq, y = density, color = Annotation),
+    fill = NA,           # Make the boxes hollow
+    outlier.shape = NA,  # Remove outlier points
+    width = 0.0002       # Make the boxes smaller
+  )
+
+#Warnings because of few outlier points above 15,000 Hz
+
+
+### 5. DO TAXANOMIC GROUPS HAVE SIGNIFICANTLY DIFFERENT FREQUENCY RANGES? ##############################
+
+
+# Low frequency
+# Perform ANOVA
+anovaLow <- aov(LowFreq ~ Annotation, data = ClassFrequencyEstimates)
+anovaLow
+
+# Conduct post-hoc test (Tukey's HSD)
+tukeyLow <- TukeyHSD(anovaLow)
+
+# View ANOVA summary
+summary(anovaLow)
+
+# View post-hoc test results
+print(tukeyLow)
+#Highly statistically significant between all groups
+
+
+# Middle frequency
+# Perform ANOVA
+anova_Middle <- aov(MidFreq ~ Annotation, data = ClassFrequencyEstimates)
+anova_Middle
+
+# Conduct post-hoc test (Tukey's HSD)
+tukey_Middle <- TukeyHSD(anova_Middle)
+
+# View ANOVA summary
+summary(anova_Middle)
+
+# View post-hoc test results
+print(tukey_Middle)
+#Highly statistically significant between all groups
+
+
+
+# High frequency
+# Perform ANOVA
+anova_High <- aov(HighFreq ~ Annotation, data = ClassFrequencyEstimates)
+anova_High
+
+# Conduct post-hoc test (Tukey's HSD)
+tukey_High <- TukeyHSD(anova_High)
+
+# View ANOVA summary
+summary(anova_High)
+
+# View post-hoc test results
+print(tukey_High)
+#Highly statistically significant between all groups
+
+
+
+# Delta frequency
+# Perform ANOVA
+anova_Delta <- aov(DeltaFreq ~ Annotation, data = ClassFrequencyEstimates)
+anova_Delta
+
+# Conduct post-hoc test (Tukey's HSD)
+tukey_Delta <- TukeyHSD(anova_Delta)
+
+# View ANOVA summary
+summary(anova_Delta)
+
+# View post-hoc test results
+print(tukey_Delta)
+#Highly statistically significant between all groups
+
+
