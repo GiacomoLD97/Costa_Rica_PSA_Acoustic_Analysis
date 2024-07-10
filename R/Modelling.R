@@ -116,7 +116,7 @@ tmap_leaflet(site_map)
 
 
 
-### 4. FIGURE 2, MODELS FOR EACH MINUTE WITH PREDICTIVE VARIABLES ##############################
+### 4. FIGURE 2A, MODELS FOR EACH MINUTE WITH PREDICTIVE VARIABLES ##############################
 
 
 ### 4a. LOAD THE CLIMATIC/PREDICTIVE VARIABLES ##############################
@@ -320,18 +320,15 @@ custom_order <- c("Reference_Forest", "Natural_Regeneration", "Plantation", "Pas
 forplotting$Type <- factor(forplotting$Type, levels = custom_order)
 
 
-line_plot <- forplotting %>% 
+forplotting %>% 
   ggplot(aes(x = time_format, y = MeanPMN, group = Type, color = Type)) +
   geom_line() +
   labs(x = "Time of Day", y = "Average PMN Value") +
   scale_color_manual(name = "Type", values = type_colors) +  # Set manual colors
   scale_x_datetime(date_breaks = "2 hours", date_labels = "%H:%M")  # Adjust the date_breaks and date_labels as per your preference
 
-line_plot
 
-
-
-
+ggsave('/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/figures/Figure2A_lineplot.pdf')
 
 
 
@@ -445,6 +442,83 @@ plot(rfmodelopt)
 varImpPlot(rfmodelopt) 
 
 
+
+
+### 4e. LINEPLOT FOR SOUNDSCAPE TYPE WITH TIMES IDENTIFIED FROM 4d ##############################
+
+df <- data.frame(nearest_10 = seq(0, 1440, by = 10), time_format = sprintf("%02d:%02d", seq(0, 1440, by = 10) %/% 60, seq(0, 1440, by = 10) %% 60))
+forplotting <- agg_data %>% subset(select = c(Minute, nearest_10, MeanPMN, Site, Type)) %>% unique()
+forplotting <- merge(forplotting, df, by="nearest_10")
+forplotting$Type <- ifelse(grepl("Ref", forplotting$Type, ignore.case = TRUE), "Reference Forests", forplotting$Type)
+forplotting$Type <- ifelse(grepl("Nat", forplotting$Type, ignore.case = TRUE), "Natural Regeneration", forplotting$Type)
+
+
+
+# Define colors for each Type group
+type_colors <- c("Reference Forests" = "#228833",
+                 "Natural Regeneration" = "#4477AA",
+                 "Plantation" = "#EE6677",
+                 "Pasture" = "#CCBB44")
+
+custom_order <- c("Reference Forests", "Natural Regeneration", "Plantation", "Pasture")
+forplotting$Type <- factor(forplotting$Type, levels = custom_order)
+
+#Add in results from model
+allbestmodels$include <- ifelse(grepl("Type", allbestmodels$predictors), TRUE, FALSE)
+allbestmodels$nearest <- as.numeric(rownames(allbestmodels))
+allbestmodels<-allbestmodels %>%
+  mutate(nearest = round_any(nearest, 10, round)) 
+formerging <- allbestmodels %>% subset(select = c(nearest, include))
+formerging <- formerging %>%
+  group_by(nearest) %>%
+  mutate(include = if_else(sum(include) > n() / 2, TRUE, FALSE)) %>% unique() 
+
+#Extract included timebins for use in later analyses
+#write.csv(formerging, "/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/data/identifiedminutes.csv")
+
+merged_data <- forplotting %>%
+  left_join(formerging, by = c("nearest_10" = "nearest"))
+
+
+# Calculate y range for the markers based on the data
+y_min <- min(merged_data$MeanPMN, na.rm = TRUE)
+y_max <- max(merged_data$MeanPMN, na.rm = TRUE)
+y_range <- 100
+
+# Filter the data for the x-axis markers
+timemarker_data <- merged_data %>%
+  filter(include == TRUE) %>%
+  select(time_format) %>%
+  distinct() %>%
+  mutate(y_start = y_min - 0.02 * y_range,  # Slightly below the minimum MeanPMN
+         y_end = y_max + 0.02 * y_range)     # Slightly above the maximum MeanPMN
+
+
+# Plot
+merged_data %>%
+  ggplot(aes(x = time_format, y = MeanPMN, group = Type, color = Type)) +
+  geom_line() +
+  geom_segment(
+    data = timemarker_data,
+    aes(x = time_format, xend = time_format, y = 520000, yend = 570000),
+    inherit.aes = FALSE,
+    color = "green",
+    alpha = 0.5,
+    linewidth = 3 
+  ) +
+  labs(x = "Time of Day", y = "Average ΣPMN") +
+  scale_x_discrete(breaks = c(paste("0", 0:9, ":00", sep = ""), paste(10:23, ":00", sep = ""))) +
+  scale_color_manual(name = "Type", values = type_colors) +
+  theme_minimal() +
+  theme(
+    axis.line = element_line(),
+    axis.line.x = element_line(),
+    axis.line.y = element_line(),
+    axis.ticks = element_line(color = "black"),
+    axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate the text on the X axis
+  )
+
+
 ### 5. SIMPLY EVALUATE WHETHER THERE ARE SIGNIFICANT OVERALL DIFFERENCES BETWEEN SOUNDSCAPES ##############################
 
 #Just using simple ANOVA's on each individual minute, minutes that are printed fail to show statistical significance
@@ -469,7 +543,7 @@ ggplot(ModellingData, aes(x = as.factor(Minute), y = SummedPMN, fill = Type)) +
   theme_minimal()
 
 
-#By averaging the values such that each Type has only one value per timebin we can use Friedman Statistical tests
+#By averaging the values such that each Type has only one value per timebin we can use Friedman Statistical tests for repeated measures within groups
 
 quantify <- averagedmodellingdata %>% subset(select = c(MeanPMN, Type, nearest_10)) %>% unique()
 friedman.test(MeanPMN~Type|nearest_10, data=quantify)

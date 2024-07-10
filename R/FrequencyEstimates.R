@@ -1,8 +1,18 @@
 
 
 ### 1. LOAD PACKAGES ##############################
-
+#Pacman allows you to install and load (or just load) packages at once
+#install.packages(pacman)
+library(pacman)
+#Load other packages
 p_load(RColorBrewer)
+p_load(terra)
+p_load(gplyr)
+p_load(ggplot2)
+p_load(purrr)
+p_load(RColorBrewer)
+p_load(stats)
+p_load(utils)
 
 ### 2. LOAD AND PROCESS ALL THE SELECTION DATA ##############################
 
@@ -179,7 +189,11 @@ ClassFrequencyEstimates %>%
     fill = NA,           # Make the boxes hollow
     outlier.shape = NA,  # Remove outlier points
     width = 0.0002       # Make the boxes smaller
-  )
+  ) +
+  geom_vline(xintercept = c(0, 9000), colour="lightgreen", linetype = "longdash")
+
+
+ggsave('/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/figures/Figure2B_DensityandBox.pdf')
 
 #Warnings because of few outlier points above 15,000 Hz
 
