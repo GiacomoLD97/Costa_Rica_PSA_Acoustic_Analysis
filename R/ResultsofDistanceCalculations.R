@@ -1,7 +1,15 @@
 
 ### 1. LOAD PACKAGES ##############################
 
-
+#Pacman allows you to install and load (or just load) packages at once
+#install.packages(pacman)
+library(pacman)
+#Load other packages
+p_load(ggplot2)
+p_load(ggpubr)
+p_load(rstatix)
+p_load(stats)
+p_load(utils)
 
 ### 2. LOAD AND REFORMAT DATA ##############################
 
