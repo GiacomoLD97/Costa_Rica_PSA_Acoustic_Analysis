@@ -10,7 +10,8 @@ df_summarised_10min %>%
                      labels = c("Natural Regeneration", "Pasture", "Plantation", "Reference Forest")) +
   scale_fill_manual(values = c("#4477AA", "#CCBB44", "#EE6677", "#228833"), guide = 'none') +
   theme(legend.title = element_blank()) +
-  coord_polar(theta = "x", start = pi/2) +
+  # coord_polar(theta = "x", start = pi/2) +
+  coord_radial(theta = "x", start = pi/2, inner.radius = 0.3, expand = F) +
   # geom_vline(color = 'grey50', xintercept = as.POSIXct("2023-12-13 00:00:00") + minutes(315), linetype = 'dashed', linewidth = 0.5) +
   # geom_vline(color = 'grey50', xintercept = as.POSIXct("2023-12-13 00:00:00") + minutes(1070), linetype = 'dashed', linewidth = 0.5) +
   theme(axis.text.x = element_text(size = 10, color = "black"),
