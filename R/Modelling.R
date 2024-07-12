@@ -418,7 +418,7 @@ averagedmodellingdata <- averagedmodellingdata %>%
   ))
 
 averagedmodellingdata$Level = factor(averagedmodellingdata$Level) 
-fwrite(averagedmodellingdata, '/Users/johanvandenhoogen/ETH/Projects/costa_rica/shap/averagedmodellingdata_forSHAP.py')
+fwrite(averagedmodellingdata, '/Users/johanvandenhoogen/ETH/Projects/costa_rica/shap/averagedmodellingdata_forSHAP.csv')
 
 rfmodel <- randomForest(formula = MeanPMN ~ Ann_Precip + AvgCanopyHeight + Type + EVI + Human.footprint + Elevation + MeanNoise + nearest_10, data = averagedmodellingdata)
 which.min(rfmodel$mse)
