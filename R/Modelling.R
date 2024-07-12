@@ -284,7 +284,7 @@ IncludedSitesMetaData <- merge(Sitesincluded, ClimforAnalysis, by.x = "Site", by
 ### 4c. OVERALL SOUNDSCAPE PATTERNS + VISUALIZING ##############################
 
 #START HERE IF YOU HAVE THE DATAFRAME
-ModellingData <- read.csv("/Users/giacomodelgado/Documents/GitHub/CostaRica/ModellingDataForFigure2oct2023.csv")
+ModellingData <- read.csv("/Users/giacomodelgado/Documents/GitHub/CostaRica/ModellingDataForFigure2oct2023.csv") # Correct path to correct file
 
 
 #We are trying to establish when Site Type is a good predictor and what other factors are driving the differences that we see
