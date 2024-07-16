@@ -328,7 +328,6 @@ forplotting %>%
   scale_x_datetime(date_breaks = "2 hours", date_labels = "%H:%M")  # Adjust the date_breaks and date_labels as per your preference
 
 
-ggsave('/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/figures/Figure2A_lineplot.pdf')
 
 
 
@@ -518,6 +517,7 @@ merged_data %>%
     axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate the text on the X axis
   )
 
+ggsave("/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/figures/Figure2A_lineplot.pdf")
 
 ### 5. SIMPLY EVALUATE WHETHER THERE ARE SIGNIFICANT OVERALL DIFFERENCES BETWEEN SOUNDSCAPES ##############################
 
