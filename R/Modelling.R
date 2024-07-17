@@ -287,13 +287,13 @@ IncludedSitesMetaData <- merge(Sitesincluded, ClimforAnalysis, by.x = "Site", by
 ModellingData <- read.csv("/Users/giacomodelgado/Documents/GitHub/CostaRica/ModellingDataForFigure2oct2023.csv") # Correct path to correct file
 
 #We are trying to establish when Site Type is a good predictor and what other factors are driving the differences that we see
-#In this graph you can see that when we predict PMN by Minute, there are large differences between Site Types
+#In this line plot graph you can see that when we predict PMN by Minute, there are large differences between Site Types
 ModellingData %>% group_by(Site, Minute) %>% mutate(avgSummedPMN = mean(SummedPMN)) %>% 
   ggplot(data = ., aes(x=Minute, y = avgSummedPMN, color = Type)) + geom_smooth(method= 'gam') +
   xlab("Minute of the Day") +
   ylab("SummedPMN")
 
-#This is a line plot version
+#Average data into 10min bins
 round_any = function(x, accuracy, f=round){f(x/ accuracy) * accuracy}
 
 agg_data <- ModellingData %>%

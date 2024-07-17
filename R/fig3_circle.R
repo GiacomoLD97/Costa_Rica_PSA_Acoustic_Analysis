@@ -67,10 +67,10 @@ forplotting %>%
   geom_vline(xintercept = as.numeric(sunrise_time), color = '#e69b00', linetype = 'dotted', linewidth = 1, alpha = 0.7) +
   geom_vline(xintercept = as.numeric(sunset_time), color = 'darkblue', linetype = 'dotted', linewidth = 1, alpha = 0.7) +
   coord_radial(start = -0.7 * pi, end = 0.7 * pi, inner.radius = 0.2) +
-  geom_text(data = maxima_4_6am[1,], aes(label = format(time_format, "%H:%M"), y = MeanPMN + y_shifts[Type= "Pasture"]), family = "serif", size = 3, angle = 320, vjust = 2) +
-  geom_text(data = maxima_4_6am[2,], aes(label = format(time_format, "%H:%M"), y = MeanPMN + y_shifts[Type= "Pasture"]), family = "serif", size = 3, angle = 320, vjust = 2) +
-  geom_text(data = maxima_4_6am[3,], aes(label = format(time_format, "%H:%M"), y = MeanPMN + y_shifts[Type= "Pasture"]), family = "serif", size = 3, angle = 320, vjust = 4) +
-  geom_text(data = maxima_4_6am[4,], aes(label = format(time_format, "%H:%M"), y = MeanPMN + y_shifts[Type= "Pasture"]), family = "serif", size = 3, angle = 320, vjust = 5, hjust = -0.2) +
+  geom_text(data = maxima_4_6am[1,], aes(label = format(time_format, "%H:%M"), y = MeanPMN + y_shifts[Type]), family = "serif", size = 3, angle = 320, vjust = 2) +
+  geom_text(data = maxima_4_6am[2,], aes(label = format(time_format, "%H:%M"), y = MeanPMN + y_shifts[Type]), family = "serif", size = 3, angle = 320, vjust = 2) +
+  geom_text(data = maxima_4_6am[3,], aes(label = format(time_format, "%H:%M"), y = MeanPMN + y_shifts[Type]), family = "serif", size = 3, angle = 320, vjust = 4) +
+  geom_text(data = maxima_4_6am[4,], aes(label = format(time_format, "%H:%M"), y = MeanPMN + y_shifts[Type]), family = "serif", size = 3, angle = 320, vjust = 5, hjust = -0.2) +
   geom_text(data = maxima_530_730pm[1,], aes(label = format(time_format, "%H:%M"), y = MeanPMN + y_shifts[Type]), family = "serif", size = 3, angle = 30, vjust= -2.1, hjust = -0.7) +
   geom_text(data = maxima_530_730pm[2,], aes(label = format(time_format, "%H:%M"), y = MeanPMN + y_shifts[Type]), family = "serif", size = 3, angle = 30, vjust= -1.9, hjust = -0.7) +
   geom_text(data = maxima_530_730pm[3,], aes(label = format(time_format, "%H:%M"), y = MeanPMN + y_shifts[Type]), family = "serif", size = 3, angle = 30, vjust= -2, hjust = -0.3) +
