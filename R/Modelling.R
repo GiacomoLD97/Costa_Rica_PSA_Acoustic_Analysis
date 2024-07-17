@@ -283,9 +283,8 @@ IncludedSitesMetaData <- merge(Sitesincluded, ClimforAnalysis, by.x = "Site", by
 
 ### 4c. OVERALL SOUNDSCAPE PATTERNS + VISUALIZING ##############################
 
-#START HERE IF YOU HAVE THE DATAFRAME
+#START HERE IF YOU HAVE THE DATAFRAME, data not uploaded to GitHub, too large
 ModellingData <- read.csv("/Users/giacomodelgado/Documents/GitHub/CostaRica/ModellingDataForFigure2oct2023.csv") # Correct path to correct file
-ModellingData <- fread("/Users/johanvandenhoogen/GitHub/Costa_Rica_PSA_Acoustic_Analysis/data/ModellingDataForFigure2oct2023.csv")
 
 #We are trying to establish when Site Type is a good predictor and what other factors are driving the differences that we see
 #In this graph you can see that when we predict PMN by Minute, there are large differences between Site Types

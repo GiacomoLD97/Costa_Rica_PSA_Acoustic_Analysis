@@ -96,3 +96,89 @@ for (v in shap.importance(shap, names_only = TRUE)) {
     ggtitle(v)
   print(p)
 }
+
+
+
+
+
+
+
+
+
+#Perhaps we try with non-averaged data, using minute instead of ten-min timebin
+
+ModellingData <- ModellingData %>% subset(select = -c(TimeStamp, Latitude, Longitude, Site))
+ModellingData$Plantationtype <- ifelse(grepl("Plantation", ModellingData$Type, ignore.case = TRUE), TRUE, FALSE)
+ModellingData$Pasturetype <- ifelse(grepl("Pasture", ModellingData$Type, ignore.case = TRUE), TRUE, FALSE)
+ModellingData$NatRegentype <- ifelse(grepl("Natural_Regeneration", ModellingData$Type, ignore.case = TRUE), TRUE, FALSE)
+ModellingData$Reftype <- ifelse(grepl("Reference_Forest", ModellingData$Type, ignore.case = TRUE), TRUE, FALSE)
+ModellingData$MicType <- ifelse(grepl("Gen1.1", ModellingData$MicType), 0, 1)
+ModellingData <- ModellingData %>% subset(select = -Type)
+
+xg2 <- ModellingData
+
+#Define response and features
+x2 <- colnames(xg2)[-2]
+y2 <- "SummedPMN"
+
+#Random split
+set.seed(1) #always put a seed when doing RF,so that results are reproducible
+ix2 <- sample(nrow(xg2), (nrow(xg2)*0.8)) #80% training dataset
+
+xg2 <- as.data.frame(xg2)
+dtrain2 <- xgb.DMatrix(data.matrix(xg2[ix2, x2]),
+                      label = xg2[ix2, y2])
+dvalid2 <- xgb.DMatrix(data.matrix(xg2[-ix2, x2]),
+                      label = xg2[-ix2, y2])
+
+
+params <- list(
+  objective = "reg:squarederror",
+  learning_rate = 0.05,
+  subsample = 0.9,
+  colsample_bynode = 1,
+  reg_lambda = 2,
+  max_depth = 5
+)
+
+watchlist2 = list(train=dtrain2, test=dvalid2)
+
+fit_xgb2 <- xgb.train(
+  params,
+  data = dtrain2,
+  watchlist = watchlist2,
+  early_stopping_rounds = 20,
+  print_every_n = 100,
+  nrounds = 10000 # early stopping
+)
+
+
+
+#SHAP
+p_load(farff)
+p_load(OpenML)
+p_load(dplyr)
+p_load(ggplot2)
+p_load(SHAPforxgboost)
+
+
+# Step 1: Select some observations
+X2 <- data.matrix(xg2[sample(nrow(xg2), 1000), x2])
+
+# Step 2: Crunch SHAP values
+shap2 <- shap.prep(fit_xgb2, X_train = X2)
+
+# Step 3: SHAP importance
+shap.plot.summary(shap2)
+
+# Step 4: Loop over dependence plots in decreasing importance
+for (v in shap.importance(shap2, names_only = TRUE)) {
+  p <- shap.plot.dependence(shap2, v, color_feature = "auto", 
+                            alpha = 0.5, jitter_width = 0.1) +
+    ggtitle(v)
+  print(p)
+}
+
+
+#Too noisy, keep using aggregated data
+
