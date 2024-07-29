@@ -1,19 +1,13 @@
-
-### 1. LOAD PACKAGES ##############################
-
-#Pacman allows you to install and load (or just load) packages at once
-#install.packages(pacman)
-library(pacman)
-#Load other packages
-p_load(ggplot2)
-p_load(ggpubr)
-p_load(rstatix)
-p_load(stats)
-p_load(utils)
+rm(list = ls())
+library(ggpubr)
+library(rstatix)
+library(stats)
+library(utils)
+library(tidyverse)
 
 ### 2. LOAD AND REFORMAT DATA ##############################
 
-Dist2Pasture <- read.csv("/Users/giacomodelgado/Downloads/wasserstein10min_freq_toPasture.csv")
+Dist2Pasture <- read.csv("data/wasserstein10min_freq_toPasture.csv")
 
 Nat2Past <- Dist2Pasture %>% subset(select = c(nearest_10, distance_nat, freq_category))
 Nat2Past$Type <- "Natural_Regeneration"

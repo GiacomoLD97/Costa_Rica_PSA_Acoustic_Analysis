@@ -1,18 +1,12 @@
-
-
-### 1. LOAD PACKAGES ##############################
-#Pacman allows you to install and load (or just load) packages at once
-#install.packages(pacman)
-library(pacman)
-#Load other packages
-p_load(RColorBrewer)
-p_load(terra)
-p_load(gplyr)
-p_load(ggplot2)
-p_load(purrr)
-p_load(RColorBrewer)
-p_load(stats)
-p_load(utils)
+rm(list = ls())
+library(RColorBrewer)
+library(terra)
+library(gplyr)
+library(purrr)
+library(RColorBrewer)
+library(stats)
+library(utils)
+library(tidyverse)
 
 ### 2. LOAD AND PROCESS ALL THE SELECTION DATA ##############################
 
