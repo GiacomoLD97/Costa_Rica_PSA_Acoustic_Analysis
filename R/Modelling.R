@@ -22,91 +22,22 @@ library(readxl)
 library(randomForest)
 library(tidyverse)
 
-
-
-### 2. LIST OF SITES ##############################
-
-#Pull together the final list of sites to be used
-#Load the list of output files from PMN analysis
-
-#This list already doesn't include any files labelled as "LowQuality" or "Failed" in initial quality review
-setwd("/Volumes/Lacie/output")
-sitesincluded <- dir()
-
-#There are a few more outliers and failed recordings that need to be removed
-
-#Below are notes on why they've been removed
-#RFX16_31052022_PSA0202-2016 has inflated PMN scores due to microphone drips and clicks
-#RFX37_30052022_PSA0098-2013 is a completely failed recording
-#RFX38_03062022_RefForest3 Needs to be either removed or June 8th specifically (too much rain inflates PMN values artifically) needs to be removed
-#ZH11_03062022_PSA0161-2017 Rains the whole time. No usable signals
-#RFX26_03062022_PSA0156-2015 Constant high amplitude background noise (maybe stream) means BGN removal is probably masking any usable signals
-#RFX39_22062022_PSA0166-2010 Constant high amplitude background noise (maybe stream) means BGN removal is probably masking any usable signals
-#List these sites and remove them
-toremove <- c("RFX16_31052022_PSA0202-2016", "RFX37_30052022_PSA0098-2013", "RFX38_03062022_RefForest3",
-              "ZH11_03062022_PSA0161-2017", "RFX26_03062022_PSA0156-2015", "RFX39_22062022_PSA0166-2010")
-sitesincluded <- sitesincluded[!sitesincluded %in% toremove]
-
-#Site PSA0288-2011 is NOT real, it should always be 0049-2013, I manually fixed this in the harddrives, but always double check
-
-#119 sites are included. Refer back to this list when creating other dataframes to make sure all and only these sites are being included in the analysis
-
-#Make into a dataframe
-Sitesincluded <- data.frame(Site = sapply(strsplit(sitesincluded, "_"), tail, 1))
-
-#Add microphone class in case we add it into the models
-Sitesincluded$MicType <- substr(sapply(strsplit(sitesincluded, "_"), head, 1), 1, 1)
-Sitesincluded$MicType <- ifelse(grepl("R", Sitesincluded$MicType), "Gen1.1", "Gen1.2")
-
-#Add Site Class
-Identity <- read.csv("/Users/giacomodelgado/Documents/GitHub/CostaRica/id.csv")
-
-#Make a few edits to ID dataset to make merging easier
-Identity$ID <- paste("PSA", Identity$ID, sep="")
-Identity$Type <- ifelse(grepl("R", Identity$Type), "Plantation", "Natural_Regeneration")
-
-#Now merge and add site_type
-Sitesincluded <- merge(Sitesincluded, Identity, by.x = "Site", by.y = "ID", all.x = TRUE)
-Sitesincluded$Type <- ifelse(grepl("Past", Sitesincluded$Site), "Pasture", 
-                                 ifelse(grepl("RefF", Sitesincluded$Site), "Reference_Forest", Sitesincluded$Type))
-
-
-
-
-
-
-
-
-### 3. FIGURE 1, MAP OF SITES ##############################
-
-#Load the coordinates of all the sites/microphones
-Coordinates <- read.csv("/Users/giacomodelgado/Documents/GitHub/CostaRica/Acoustic_Index_Files/Siteswithcoords.csv")
-
-#Add coordinates to the sites that are included in the analysis 
-Sitesincluded <- merge(Sitesincluded, Coordinates, by.x = "Site", by.y = "CONTRACT", all.x = TRUE)
+### FIGURE 1, MAP OF SITES ##############################
+sitesincluded <- fread('data/sites_type_table.csv')
 
 #Make a spatial element with the data
-Sitesincluded_sf <- st_as_sf(Sitesincluded, coords = c("Longitude", "Latitude"), crs = 4326)
+sf_data <- st_as_sf(sitesincluded, coords = c("Longitude", "Latitude"), crs = 4326)
 
 #Now we can create the map
-site_map <- tm_shape(Sitesincluded_sf) +
+site_map <- tm_shape(sf_data) +
   tm_basemap("OpenStreetMap") +
   tm_dots(col = "Type", size = 0.1) +
-  tm_layout(title = "GPS Coordinates of Sites") +
+  tm_layout(title = "Locations of included sites") +
   tm_legend(legend.show = FALSE) 
 tmap_leaflet(site_map)
 
 
-
-
-
-
-
-
-
-
 ### 4. FIGURE 2A, MODELS FOR EACH MINUTE WITH PREDICTIVE VARIABLES ##############################
-
 
 ### 4a. LOAD THE CLIMATIC/PREDICTIVE VARIABLES ##############################
 
@@ -358,9 +289,9 @@ for (min in minutesincluded) {
   
   # Generate all possible combinations of predictors
   predictor_combinations <- list()
-for (i in 1:length(predictors)) {
-  predictor_combinations[[i]] <- combn(predictors, i)
-}
+  for (i in 1:length(predictors)) {
+    predictor_combinations[[i]] <- combn(predictors, i)
+  }
   
   # Loop through each combination and calculate AIC
   best_AIC <- Inf
