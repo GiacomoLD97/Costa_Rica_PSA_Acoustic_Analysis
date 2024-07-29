@@ -41,29 +41,27 @@ tmap_leaflet(site_map)
 
 ### 4a. LOAD THE CLIMATIC/PREDICTIVE VARIABLES ##############################
 
-#Extract climatic variables for all sites included from the Crowther Lab composite 
-#The code used in Google Earth Engine can be found at the following link: https://code.earthengine.google.com/50d4b0b049b1cbdc90f4d0372663efe5
-#Load the climatic data
-Climaticdata <- read.csv("/Users/giacomodelgado/Documents/GitHub/CostaRica/climaticvariables.csv")
-#Remove unneeded columns
-Climaticdata <- Climaticdata %>% subset(select = -c(system.index, .geo))
-#Also add in the canopy height as measured on the ground
-Canopyheight <- read_excel("/Users/giacomodelgado/Documents/GitHub/FieldDataSheet.xlsx", 
-                           col_types = c("text", "text", "text", "text", "numeric", "numeric", "numeric", 
-                                         "numeric", "numeric", "numeric","text", "text", "text"))
+# Extract climatic variables for all sites included from Google Earth Engine
+# The code used in Google Earth Engine can be found at the following link: https://code.earthengine.google.com/50d4b0b049b1cbdc90f4d0372663efe5
+# Load the climatic data
+Climaticdata <- read.csv("data/climaticvariables.csv") %>% 
+  subset(select = -c(system.index, .geo))
 
-Canopyheight <- Canopyheight %>% subset(select = c("PES Contract Number", "Canopy T start", "Canopy T mid", "Canopy T end"))
-#replace NA with 0
-Canopyheight[is.na(Canopyheight)] = 0
-#rename
-colnames(Canopyheight) <- c("Site", "Tstart", "Tmid", "Tend")
-#Average Canopy Height and add it to Climatic Data
-Canopyheight$AvgCanopyHeight <- rowMeans(Canopyheight[, c("Tstart", "Tmid", "Tend")])
-Canopyheight <- Canopyheight %>% subset(select = c(Site, AvgCanopyHeight))
+# Add canopy height as measured on the ground
+Canopyheight <- read_excel("data/FieldDataSheet.xlsx", 
+                           col_types = c("text", "text", "text", "text", "numeric", "numeric", "numeric", 
+                                         "numeric", "numeric", "numeric", "text", "text", "text")) %>%
+  select(Site = "PES Contract Number", Tstart = "Canopy T start", Tmid = "Canopy T mid", Tend = "Canopy T end") %>%
+  mutate(across(c(Tstart, Tmid, Tend), ~replace_na(., 0)),
+         AvgCanopyHeight = rowMeans(across(c(Tstart, Tmid, Tend)))) %>% 
+  select(Site, AvgCanopyHeight)
+
 #Add this to the climatic data 
-Climaticdata <- merge(Climaticdata, Canopyheight, by.x = "X.CONTRACT", by.y = "Site", all.x = TRUE)
-#Two copies of RefForest1 but only one is real
-Climaticdata <- Climaticdata[-122,]
+Climaticdata <- Climaticdata %>% left_join(Canopyheight, by = c("X.CONTRACT" = "PES Contract Number"))
+
+# remove duplicates
+Climaticdata <- Climaticdata %>% distinct()
+
 #Rename
 colnames(Climaticdata) <- c("Site", "Aridity.Index", "Mean_Temp", "Ann_Precip", "NPP", "EVI", "Elevation", "Soil.Ph", "Human.footprint", "AvgCanopyHeight")
 
@@ -71,7 +69,6 @@ colnames(Climaticdata) <- c("Site", "Aridity.Index", "Mean_Temp", "Ann_Precip", 
 cor_matrix <- cor(Climaticdata[,-1], use = "pairwise.complete.obs")
 corrplot(cor_matrix, method = "color")
 
-#credit TomBL
 ggpairs(
   Climaticdata[,-1], 
   lower = list(continuous = wrap(lowerFn, method = "lm")),
@@ -80,9 +77,10 @@ ggpairs(
 )
 #According to correlation we should remove Aridity, mean Temperature, precip, NPP and soil pH
 
-#Now test using VIF, credit TomBL
+# Test using VIF
 options(scipen = 999)
 set.seed(123) 
+
 #Threshold determines sensitivity, although for our data thresholds between 1 and 10 do not change the result
 VIF.COR <- vifcor(Climaticdata[,-1], th = 0.5)
 
@@ -93,17 +91,10 @@ VIF.COR.MATRIX <- data.frame(VIF.COR@corMatrix)
 VIF.COR@excluded
 
 #Recomends removing all the same variables, both recommend removing Annual Precip, but it seems important
-
 ClimforAnalysis <- Climaticdata %>% subset(select = -c(NPP, Mean_Temp, Aridity.Index, Soil.Ph))
 
 #Now merge with sites included to have a full set of metadata for all sites included in the analysis
 IncludedSitesMetaData <- merge(Sitesincluded, ClimforAnalysis, by.x = "Site", by.y = "Site", all.x = TRUE)
-
-
-
-
-
-
 
 
 
