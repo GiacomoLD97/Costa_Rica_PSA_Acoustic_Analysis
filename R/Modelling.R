@@ -180,8 +180,7 @@ IncludedSitesMetaData <- sitesincluded %>% left_join(., env_data, by = "Site") %
 # 
 ##Do the same for Sitesincluded to include the other site metadata
 # #Save this dataframe so that it can be called on again
-#write.csv(ModellingData, "/Users/giacomodelgado/Documents/GitHub/CostaRica/ModellingDataForFigure2oct2023.csv", row.names=FALSE)
-
+#write.csv(ModellingData, "data/ModellingDataForFigure2oct2023.csv", row.names=FALSE)
 
 
 ### 4c. OVERALL SOUNDSCAPE PATTERNS + VISUALIZING ##############################
@@ -199,39 +198,42 @@ type_colors <- c("Reference_Forest" = "#228833",
 ModellingData %>% 
   group_by(Site, Minute) %>% 
   mutate(avgSummedPMN = mean(SummedPMN)) %>% 
-  ggplot(data = ., aes(x=Minute, y = avgSummedPMN, color = Type)) + geom_smooth(method= 'gam') +
+  ggplot(aes(x = Minute, y = avgSummedPMN, color = Type)) + 
+  geom_smooth(method= 'gam') +
   xlab("Minute of the Day") +
   ylab("SummedPMN") +
-  scale_color_manual(name = "Type", values = type_colors) +
-  theme_bw()
+  scale_color_manual(name = "Vegetation Type", values = type_colors) +
+  theme_minimal() +
+  theme(
+    axis.line = element_line(),
+    panel.grid = element_blank()
+  )
 
 #Average data into 10min bins
 round_any = function(x, accuracy, f=round){f(x/ accuracy) * accuracy}
 
 agg_data <- ModellingData %>%
   mutate(nearest_10 = round_any(Minute, 10, round)) %>%
-  dplyr::group_by(Type, nearest_10) %>%
+  group_by(Type, nearest_10) %>%
   mutate(MeanPMN = mean(SummedPMN), MeanNoise = mean(SummedNoise)) %>%
   ungroup() 
 
-df <- data.frame(nearest_10 = seq(0, 1440, by = 10), time_format = sprintf("%02d:%02d", seq(0, 1440, by = 10) %/% 60, seq(0, 1440, by = 10) %% 60))
-forplotting <- agg_data %>% subset(select = c(Minute, nearest_10, MeanPMN, Site, Type)) %>% unique()
-forplotting <- merge(forplotting, df, by="nearest_10")
+df <- data.frame(nearest_10 = seq(0, 1440, by = 10), time_format = sprintf("%02d:%02d", seq(0, 1440, by = 10) %/% 60, seq(0, 1440, by = 10) %% 60)) %>% 
+  mutate(time_format = as.POSIXct(time_format, format = "%H:%M")) %>% 
+  left_join(., agg_data, by = "nearest_10") %>% 
+  mutate(Type = factor(Type, levels = c("Reference_Forest", "Natural_Regeneration", "Plantation", "Pasture")))
 
-forplotting$time_format <- as.POSIXct(forplotting$time_format, format = "%H:%M")
-
-
-custom_order <- c("Reference_Forest", "Natural_Regeneration", "Plantation", "Pasture")
-forplotting$Type <- factor(forplotting$Type, levels = custom_order)
-
-
-forplotting %>% 
+df %>% 
   ggplot(aes(x = time_format, y = MeanPMN, group = Type, color = Type)) +
   geom_line() +
-  labs(x = "Time of Day", y = "Average PMN Value") +
-  scale_color_manual(name = "Type", values = type_colors) +  
-  scale_x_datetime(date_breaks = "2 hours", date_labels = "%H:%M") 
-
+  labs(x = "Time of Day", y = "Mean Summed PMN") +
+  scale_color_manual(name = "Vegetation Type", values = type_colors) +  
+  scale_x_datetime(date_breaks = "2 hours", date_labels = "%H:%M") +
+  theme_minimal() +
+  theme(
+    axis.line = element_line(),
+    panel.grid = element_blank()
+  )
 
 
 
