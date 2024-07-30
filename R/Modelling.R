@@ -1,39 +1,36 @@
 rm(list = ls())
-library(ggbiplot)
-library(rlist)
-library(gridExtra)
-library(caTools)
-library(broom)
-library(seewave)
-library(caret)
+
+# library(ggbiplot)
+# library(rlist)
+# library(gridExtra)
+# library(caTools)
+# library(broom)
+# library(seewave)
+# library(caret)
 library(data.table)
-library(clock)
-library(lubridate)
-library(tseries)
-library(ggpubr)
+# library(clock)
+# library(lubridate)
+# library(tseries)
+# library(ggpubr)
 library(tmap)
 library(sf)
 library(corrplot)
-library(Hmisc)
+# library(Hmisc)
 library(usdm)
 library(GGally)
-library(lme4)
-library(readxl)
-library(randomForest)
+# library(lme4)
+# library(randomForest)
 library(tidyverse)
 
 ### FIGURE 1, MAP OF SITES ##############################
 sitesincluded <- fread('data/sites_type_table.csv')
 
-#Make a spatial element with the data
-sf_data <- st_as_sf(sitesincluded, coords = c("Longitude", "Latitude"), crs = 4326)
-
-#Now we can create the map
-site_map <- tm_shape(sf_data) +
+# Now we can create the map
+site_map <- tm_shape(st_as_sf(sitesincluded, coords = c("Longitude", "Latitude"), crs = 4326)) +
   tm_basemap("OpenStreetMap") +
   tm_dots(col = "Type", size = 0.1) +
-  tm_layout(title = "Locations of included sites") +
-  tm_legend(legend.show = FALSE) 
+  tm_layout(title = "Locations of sites") +
+  tm_legend(legend.show = FALSE)
 tmap_leaflet(site_map)
 
 
@@ -44,45 +41,45 @@ tmap_leaflet(site_map)
 # Extract climatic variables for all sites included from Google Earth Engine
 # The code used in Google Earth Engine can be found at the following link: https://code.earthengine.google.com/50d4b0b049b1cbdc90f4d0372663efe5
 # Load the climatic data
-Climaticdata <- read.csv("data/climaticvariables.csv") %>% 
-  subset(select = -c(system.index, .geo))
+env_data <- fread("data/climaticvariables.csv") %>% 
+  select(-c('system:index', '.geo'))
 
 # Add canopy height as measured on the ground
-Canopyheight <- read_excel("data/FieldDataSheet.xlsx", 
-                           col_types = c("text", "text", "text", "text", "numeric", "numeric", "numeric", 
-                                         "numeric", "numeric", "numeric", "text", "text", "text")) %>%
-  select(Site = "PES Contract Number", Tstart = "Canopy T start", Tmid = "Canopy T mid", Tend = "Canopy T end") %>%
+canopy_height <- fread("data/FieldDataSheet.csv") %>% 
+  select(Site, Tstart = "Canopy T start", Tmid = "Canopy T mid", Tend = "Canopy T end") %>%
   mutate(across(c(Tstart, Tmid, Tend), ~replace_na(., 0)),
          AvgCanopyHeight = rowMeans(across(c(Tstart, Tmid, Tend)))) %>% 
   select(Site, AvgCanopyHeight)
 
-#Add this to the climatic data 
-Climaticdata <- Climaticdata %>% left_join(Canopyheight, by = c("X.CONTRACT" = "PES Contract Number"))
+# Add this to the climatic data 
+env_data <- env_data %>% left_join(Canopyheight, by = "Site") %>% 
+  rename(Aridity_Index = "CGIAR_Aridity_Index",
+         Annual_Mean_Temperature = "CHELSA_BIO_Annual_Mean_Temperature",
+         Annual_Precipitation = "CHELSA_BIO_Annual_Precipitation",
+         NPP = "CHELSA_exBIO_NPP",
+         EVI = "EarthEnvTexture_Contrast_EVI",
+         Elevation = "EarthEnvTopoMed_Elevation",
+         Soil_pH = "SG_Soil_pH_H2O_000cm",
+         Human_Footprint = "WCS_Human_Footprint_2009")
 
-# remove duplicates
-Climaticdata <- Climaticdata %>% distinct()
-
-#Rename
-colnames(Climaticdata) <- c("Site", "Aridity.Index", "Mean_Temp", "Ann_Precip", "NPP", "EVI", "Elevation", "Soil.Ph", "Human.footprint", "AvgCanopyHeight")
-
-#Test the collinearity of the predictive variables  
-cor_matrix <- cor(Climaticdata[,-1], use = "pairwise.complete.obs")
+# Test collinearity of the predictive variables  
+cor_matrix <- cor(env_data %>% select(-Site), use = "pairwise.complete.obs")
 corrplot(cor_matrix, method = "color")
 
 ggpairs(
-  Climaticdata[,-1], 
+  env_data %>% select(-Site), 
   lower = list(continuous = wrap(lowerFn, method = "lm")),
   diag = list(continuous = "densityDiag", discrete = "barDiag", na = "naDiag"),
   upper = list(continuous = wrap("cor", size = 5))
 )
-#According to correlation we should remove Aridity, mean Temperature, precip, NPP and soil pH
+# According to correlation we should remove Aridity, mean Temperature, precip, NPP and soil pH
 
 # Test using VIF
 options(scipen = 999)
 set.seed(123) 
 
-#Threshold determines sensitivity, although for our data thresholds between 1 and 10 do not change the result
-VIF.COR <- vifcor(Climaticdata[,-1], th = 0.5)
+# Threshold determines sensitivity, although for our data thresholds between 1 and 10 do not change the result
+VIF.COR <- vifcor(env_data %>% select(-Site), th = 0.5)
 
 # Returns a VIF object, examine different outputs.
 VIF.COR.MATRIX <- data.frame(VIF.COR@corMatrix)
@@ -90,12 +87,12 @@ VIF.COR.MATRIX <- data.frame(VIF.COR@corMatrix)
 # Check which variables are still included.
 VIF.COR@excluded
 
-#Recomends removing all the same variables, both recommend removing Annual Precip, but it seems important
-ClimforAnalysis <- Climaticdata %>% subset(select = -c(NPP, Mean_Temp, Aridity.Index, Soil.Ph))
+# Recomends removing all the same variables, both recommend removing Annual Precip, but it seems important
+env_data <- env_data 
 
-#Now merge with sites included to have a full set of metadata for all sites included in the analysis
-IncludedSitesMetaData <- merge(Sitesincluded, ClimforAnalysis, by.x = "Site", by.y = "Site", all.x = TRUE)
-
+# Now merge with sites included to have a full set of metadata for all sites included in the analysis
+IncludedSitesMetaData <- sitesincluded %>% left_join(., env_data, by = "Site") %>% 
+  select(-c(NPP, Annual_Mean_Temperature, Aridity_Index, Soil_pH))
 
 
 ### 4b. LOAD AND ORGANIZE THE RESULTS OF THE PMN ANALYSIS ##############################
@@ -187,22 +184,26 @@ IncludedSitesMetaData <- merge(Sitesincluded, ClimforAnalysis, by.x = "Site", by
 
 
 
-
-
-
-
-
 ### 4c. OVERALL SOUNDSCAPE PATTERNS + VISUALIZING ##############################
 
-#START HERE IF YOU HAVE THE DATAFRAME, data not uploaded to GitHub, too large
-ModellingData <- read.csv("/Users/giacomodelgado/Documents/GitHub/CostaRica/ModellingDataForFigure2oct2023.csv") # Correct path to correct file
+# START HERE IF YOU HAVE THE DATAFRAME, data not uploaded to GitHub, too large
+ModellingData <- fread("data/ModellingDataForFigure2oct2023.csv")
 
-#We are trying to establish when Site Type is a good predictor and what other factors are driving the differences that we see
-#In this line plot graph you can see that when we predict PMN by Minute, there are large differences between Site Types
-ModellingData %>% group_by(Site, Minute) %>% mutate(avgSummedPMN = mean(SummedPMN)) %>% 
+# Define colors for each Type group
+type_colors <- c("Reference_Forest" = "#228833",
+                 "Natural_Regeneration" = "#4477AA",
+                 "Plantation" = "#EE6677",
+                 "Pasture" = "#CCBB44")
+
+# Line plot 
+ModellingData %>% 
+  group_by(Site, Minute) %>% 
+  mutate(avgSummedPMN = mean(SummedPMN)) %>% 
   ggplot(data = ., aes(x=Minute, y = avgSummedPMN, color = Type)) + geom_smooth(method= 'gam') +
   xlab("Minute of the Day") +
-  ylab("SummedPMN")
+  ylab("SummedPMN") +
+  scale_color_manual(name = "Type", values = type_colors) +
+  theme_bw()
 
 #Average data into 10min bins
 round_any = function(x, accuracy, f=round){f(x/ accuracy) * accuracy}
@@ -220,12 +221,6 @@ forplotting <- merge(forplotting, df, by="nearest_10")
 forplotting$time_format <- as.POSIXct(forplotting$time_format, format = "%H:%M")
 
 
-# Define colors for each Type group
-type_colors <- c("Reference_Forest" = "#228833",
-                 "Natural_Regeneration" = "#4477AA",
-                 "Plantation" = "#EE6677",
-                 "Pasture" = "#CCBB44")
-
 custom_order <- c("Reference_Forest", "Natural_Regeneration", "Plantation", "Pasture")
 forplotting$Type <- factor(forplotting$Type, levels = custom_order)
 
@@ -234,11 +229,8 @@ forplotting %>%
   ggplot(aes(x = time_format, y = MeanPMN, group = Type, color = Type)) +
   geom_line() +
   labs(x = "Time of Day", y = "Average PMN Value") +
-  scale_color_manual(name = "Type", values = type_colors) +  # Set manual colors
-  scale_x_datetime(date_breaks = "2 hours", date_labels = "%H:%M")  # Adjust the date_breaks and date_labels as per your preference
-
-
-
+  scale_color_manual(name = "Type", values = type_colors) +  
+  scale_x_datetime(date_breaks = "2 hours", date_labels = "%H:%M") 
 
 
 
@@ -327,7 +319,7 @@ averagedmodellingdata <- averagedmodellingdata %>%
   ))
 
 averagedmodellingdata$Level = factor(averagedmodellingdata$Level) 
-fwrite(averagedmodellingdata, '/Users/johanvandenhoogen/ETH/Projects/costa_rica/shap/averagedmodellingdata_forSHAP.csv')
+fwrite(averagedmodellingdata, 'shap/averagedmodellingdata_forSHAP.csv')
 
 rfmodel <- randomForest(formula = MeanPMN ~ Ann_Precip + AvgCanopyHeight + Type + EVI + Human.footprint + Elevation + MeanNoise + nearest_10, data = averagedmodellingdata)
 which.min(rfmodel$mse)
@@ -415,7 +407,7 @@ merged_data %>%
     alpha = 0.5,
     linewidth = 3 
   ) +
-  labs(x = "Time of Day", y = "Average ΣPMN") +
+  labs(x = "Time of Day", y = "Mean ΣPMN") +
   scale_x_discrete(breaks = c(paste("0", 0:9, ":00", sep = ""), paste(10:23, ":00", sep = ""))) +
   scale_color_manual(name = "Type", values = type_colors) +
   theme_minimal() +
@@ -427,12 +419,11 @@ merged_data %>%
     axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate the text on the X axis
   )
 
-ggsave("/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/figures/Figure2A_lineplot.pdf")
+ggsave("figures/Figure2A_lineplot.pdf")
 
-### 5. SIMPLY EVALUATE WHETHER THERE ARE SIGNIFICANT OVERALL DIFFERENCES BETWEEN SOUNDSCAPES ##############################
+### 5. EVALUATE WHETHER THERE ARE SIGNIFICANT OVERALL DIFFERENCES BETWEEN SOUNDSCAPES ##############################
 
-#Just using simple ANOVA's on each individual minute, minutes that are printed fail to show statistical significance
-
+# ANOVAs on each individual minute, minutes that are printed fail to show statistical significance
 for (mins in minutesincluded) {
   trimdata <- ModellingData %>% subset(Minute == mins)
   one.way <- aov(SummedPMN ~ Type, data = trimdata)
@@ -441,7 +432,7 @@ for (mins in minutesincluded) {
   }
 }
 
-#Visualization
+# Visualization
 ggboxplot(ModellingData, x = "Type", y = "SummedPMN", group = "Minute", add = "jitter")
 
 ggplot(ModellingData, aes(x = as.factor(Minute), y = SummedPMN, fill = Type)) +
@@ -453,22 +444,21 @@ ggplot(ModellingData, aes(x = as.factor(Minute), y = SummedPMN, fill = Type)) +
   theme_minimal()
 
 
-#By averaging the values such that each Type has only one value per timebin we can use Friedman Statistical tests for repeated measures within groups
-
+# Averaging the values such that each Type has only one value per timebin, perform Friedman Statistical tests for repeated measures within groups
 quantify <- averagedmodellingdata %>% subset(select = c(MeanPMN, Type, nearest_10)) %>% unique()
 friedman.test(MeanPMN~Type|nearest_10, data=quantify)
 pairwise.wilcox.test(quantify$MeanPMN, quantify$Type, p.adj = "bonf")
 
-#Friedman.test
+# Friedman.test
 res.friedavg <- quantify %>% friedman_test(MeanPMN~Type|nearest_10)
 res.friedavg
 
-#Posthoc test
+# Posthoc test
 pwcavg <- quantify %>% 
   wilcox_test(as.formula(paste("MeanPMN", "Type", sep="~")), paired = TRUE, p.adjust.method = "bonferroni")
 pwcavg
 
-#Boxplots with stats
+# Boxplots with stats
 pwcavg <- pwcavg %>% add_xy_position(x = "Type")
 ggboxplot(quantify, x = "Type", y = "MeanPMN", add = "point") +
   stat_pvalue_manual(pwcavg, hide.ns = TRUE) +
