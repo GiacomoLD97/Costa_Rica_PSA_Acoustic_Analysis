@@ -1,9 +1,6 @@
 rm(list = ls())
 
 library(ggpubr)
-# library(rstatix)
-# library(stats)
-# library(utils)
 library(tidyverse)
 
 ### 2. LOAD AND REFORMAT DATA ##############################
