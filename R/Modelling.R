@@ -1,25 +1,17 @@
+# Clean up environment
 rm(list = ls())
 
-# library(ggbiplot)
-# library(rlist)
-# library(gridExtra)
-# library(caTools)
-# library(broom)
-# library(seewave)
-# library(caret)
+# Load libraries
 library(data.table)
-# library(clock)
-# library(lubridate)
-# library(tseries)
-# library(ggpubr)
+library(rlist)
+library(ggpubr)
+library(rstatix)
 library(tmap)
 library(sf)
 library(corrplot)
-# library(Hmisc)
 library(usdm)
 library(GGally)
-# library(lme4)
-# library(randomForest)
+library(lme4)
 library(tidyverse)
 
 ### FIGURE 1, MAP OF SITES ##############################
@@ -32,7 +24,6 @@ site_map <- tm_shape(st_as_sf(sitesincluded, coords = c("Longitude", "Latitude")
   tm_layout(title = "Locations of sites") +
   tm_legend(legend.show = FALSE)
 tmap_leaflet(site_map)
-
 
 ### 4. FIGURE 2A, MODELS FOR EACH MINUTE WITH PREDICTIVE VARIABLES ##############################
 
@@ -52,7 +43,7 @@ canopy_height <- fread("data/FieldDataSheet.csv") %>%
   select(Site, AvgCanopyHeight)
 
 # Add this to the climatic data 
-env_data <- env_data %>% left_join(Canopyheight, by = "Site") %>% 
+env_data <- env_data %>% left_join(canopy_height, by = "Site") %>% 
   rename(Aridity_Index = "CGIAR_Aridity_Index",
          Annual_Mean_Temperature = "CHELSA_BIO_Annual_Mean_Temperature",
          Annual_Precipitation = "CHELSA_BIO_Annual_Precipitation",
@@ -86,9 +77,6 @@ VIF.COR.MATRIX <- data.frame(VIF.COR@corMatrix)
 
 # Check which variables are still included.
 VIF.COR@excluded
-
-# Recomends removing all the same variables, both recommend removing Annual Precip, but it seems important
-env_data <- env_data 
 
 # Now merge with sites included to have a full set of metadata for all sites included in the analysis
 IncludedSitesMetaData <- sitesincluded %>% left_join(., env_data, by = "Site") %>% 
@@ -199,7 +187,7 @@ ModellingData %>%
   group_by(Site, Minute) %>% 
   mutate(avgSummedPMN = mean(SummedPMN)) %>% 
   ggplot(aes(x = Minute, y = avgSummedPMN, color = Type)) + 
-  geom_smooth(method= 'gam') +
+  geom_smooth(method = 'gam') +
   xlab("Minute of the Day") +
   ylab("SummedPMN") +
   scale_color_manual(name = "Vegetation Type", values = type_colors) +
@@ -235,9 +223,23 @@ df %>%
     panel.grid = element_blank()
   )
 
-
-
 ### 4d. MODEL PREDICTIVE VARIABLE EFFECTS - LINEAR MIXED MODELS ##############################
+
+# Function returning the AIC of GLM 
+calculate_AIC <- function(data, response, predictors) {
+  formula <- as.formula(paste(response, "~", paste(predictors, collapse = "+"), paste("+", "(1 | MicType)")))
+  model <- lmer(formula, data = data)
+  return(extractAIC(model)[2])
+}
+
+# List to store output
+best_models <- list()
+
+# Remove minutes where recorder failed
+`%notin%` <- Negate(`%in%`)
+ModellingData <- ModellingData %>%
+  filter(Minute %notin% c(385, 386, 1080)) %>% 
+  rename(Human_Footprint = Human.footprint, Annual_Precipitation = Ann_Precip)
 
 #Start by defining a function that returns the AIC of the GLM 
 calculate_AIC <- function(data, response, predictors) {
@@ -268,9 +270,9 @@ for (min in minutesincluded) {
   currentmin[ , c(7:11, 13)] <- scale(currentmin[ , c(7:11, 13)])
   
   # Get a vector of predictor variable names
-  predictors <- c("avgSummedNoise", "Ann_Precip", 
+  predictors <- c("avgSummedNoise", "Annual_Precipitation", 
                   "EVI", "Elevation", 
-                  "Human.footprint", "AvgCanopyHeight", "Type")
+                  "Human_Footprint", "AvgCanopyHeight", "Type")
   
   # Generate all possible combinations of predictors
   predictor_combinations <- list()
@@ -296,93 +298,79 @@ for (min in minutesincluded) {
   
   best_models[[as.character(min)]] <- data.frame(predictors = best_model, AIC = best_AIC)
 }
-
-allbestmodels <- list.rbind(best_models)
-countmodels <- allbestmodels %>% subset(select = predictors) %>% count()
-
+best_models <- list.rbind(best_models)
 
 ### 4e. MODEL PREDICTIVE VARIABLE EFFECTS - RANDOM FOREST MODELS ##############################
-
-#Construct a random Forest model
-set.seed(1)
-
 #Use average data and introduce timing as a variable
-averagedmodellingdata <- agg_data %>% subset(select = -c(Minute, TimeStamp, SummedPMN, SummedNoise, MicType, Latitude, Longitude)) %>% unique()
+averagedmodellingdata <- agg_data %>% select(-c(Minute, TimeStamp, SummedPMN, SummedNoise, MicType, Latitude, Longitude)) %>% unique()
 
-quartiles <- quantile(averagedmodellingdata$MeanPMN, probs = c(0.25, 0.5, 0.75))
+quantiles <- quantile(averagedmodellingdata$MeanPMN, probs = c(0.25, 0.5, 0.75))
 
 # Create a new column "Level" based on the quartiles
 averagedmodellingdata <- averagedmodellingdata %>%
   mutate(Level = case_when(
-    MeanPMN <= quartiles[1] ~ "Low",
-    MeanPMN <= quartiles[2] ~ "Medium Low",
-    MeanPMN <= quartiles[3] ~ "Medium High",
+    MeanPMN <= quantiles[1] ~ "Low",
+    MeanPMN <= quantiles[2] ~ "Medium Low",
+    MeanPMN <= quantiles[3] ~ "Medium High",
     TRUE ~ "High"
   ))
 
 averagedmodellingdata$Level = factor(averagedmodellingdata$Level) 
 fwrite(averagedmodellingdata, 'shap/averagedmodellingdata_forSHAP.csv')
 
-rfmodel <- randomForest(formula = MeanPMN ~ Ann_Precip + AvgCanopyHeight + Type + EVI + Human.footprint + Elevation + MeanNoise + nearest_10, data = averagedmodellingdata)
-which.min(rfmodel$mse)
-sqrt(rfmodel$mse[which.min(rfmodel$mse)]) 
-plot(rfmodel)
-varImpPlot(rfmodel) 
+# rfmodel <- randomForest(formula = MeanPMN ~ Annual_Precipitation + AvgCanopyHeight + Type + EVI + Human_Footprint + Elevation + MeanNoise + nearest_10, data = averagedmodellingdata)
+# which.min(rfmodel$mse)
+# sqrt(rfmodel$mse[which.min(rfmodel$mse)]) 
+# plot(rfmodel)
+# varImpPlot(rfmodel) 
+# 
+# #Also can performed using categorical response variable
+# rfmodel2 <- randomForest(formula = Level ~ Ann_Precip + AvgCanopyHeight + Type + EVI + Human.footprint + Elevation + MeanNoise + nearest_10, data = averagedmodellingdata)
+# which.min(rfmodel2$mse)
+# sqrt(rfmodel$mse[which.min(rfmodel2$mse)]) 
+# plot(rfmodel2)
+# varImpPlot(rfmodel2) 
+# 
+# 
+# #Also can be performed using the most commonly selected model in the previous step
+# rfmodelopt <- randomForest(formula = MeanPMN ~ Ann_Precip + AvgCanopyHeight + Type + nearest_10, data = averagedmodellingdata)
+# which.min(rfmodelopt$mse)
+# sqrt(rfmodelopt$mse[which.min(rfmodelopt$mse)]) 
+# plot(rfmodelopt)
+# varImpPlot(rfmodelopt) 
 
-#Also can performed using categorical response variable
-rfmodel2 <- randomForest(formula = Level ~ Ann_Precip + AvgCanopyHeight + Type + EVI + Human.footprint + Elevation + MeanNoise + nearest_10, data = averagedmodellingdata)
-which.min(rfmodel2$mse)
-sqrt(rfmodel$mse[which.min(rfmodel2$mse)]) 
-plot(rfmodel2)
-varImpPlot(rfmodel2) 
-
-
-#Also can be performed using the most commonly selected model in the previous step
-rfmodelopt <- randomForest(formula = MeanPMN ~ Ann_Precip + AvgCanopyHeight + Type + nearest_10, data = averagedmodellingdata)
-which.min(rfmodelopt$mse)
-sqrt(rfmodelopt$mse[which.min(rfmodelopt$mse)]) 
-plot(rfmodelopt)
-varImpPlot(rfmodelopt) 
-
-
-
-
-### 4e. LINEPLOT FOR SOUNDSCAPE TYPE WITH TIMES IDENTIFIED FROM 4d ##############################
-
-df <- data.frame(nearest_10 = seq(0, 1440, by = 10), time_format = sprintf("%02d:%02d", seq(0, 1440, by = 10) %/% 60, seq(0, 1440, by = 10) %% 60))
-forplotting <- agg_data %>% subset(select = c(Minute, nearest_10, MeanPMN, Site, Type)) %>% unique()
-forplotting <- merge(forplotting, df, by="nearest_10")
-forplotting$Type <- ifelse(grepl("Ref", forplotting$Type, ignore.case = TRUE), "Reference Forests", forplotting$Type)
-forplotting$Type <- ifelse(grepl("Nat", forplotting$Type, ignore.case = TRUE), "Natural Regeneration", forplotting$Type)
-
-
-
-# Define colors for each Type group
-type_colors <- c("Reference Forests" = "#228833",
-                 "Natural Regeneration" = "#4477AA",
-                 "Plantation" = "#EE6677",
-                 "Pasture" = "#CCBB44")
-
-custom_order <- c("Reference Forests", "Natural Regeneration", "Plantation", "Pasture")
-forplotting$Type <- factor(forplotting$Type, levels = custom_order)
-
-#Add in results from model
-allbestmodels$include <- ifelse(grepl("Type", allbestmodels$predictors), TRUE, FALSE)
-allbestmodels$nearest <- as.numeric(rownames(allbestmodels))
-allbestmodels<-allbestmodels %>%
+best_models$include <- ifelse(grepl("Type", best_models$predictors), TRUE, FALSE)
+best_models$nearest <- as.numeric(rownames(best_models))
+best_models<-best_models %>%
   mutate(nearest = round_any(nearest, 10, round)) 
-formerging <- allbestmodels %>% subset(select = c(nearest, include))
+formerging <- best_models %>% subset(select = c(nearest, include))
 formerging <- formerging %>%
   group_by(nearest) %>%
   mutate(include = if_else(sum(include) > n() / 2, TRUE, FALSE)) %>% unique() 
 
+### 4e. LINEPLOT FOR SOUNDSCAPE TYPE WITH TIMES IDENTIFIED FROM 4d ##############################
+# 
+# df <- data.frame(nearest_10 = seq(0, 1440, by = 10), time_format = sprintf("%02d:%02d", seq(0, 1440, by = 10) %/% 60, seq(0, 1440, by = 10) %% 60)) %>% 
+#   left_join(., agg_data, by = "nearest_10") %>% 
+#   mutate(Type = factor(Type, levels = c("Reference_Forest", "Natural_Regeneration", "Plantation", "Pasture")))
+
+# Results from model fitting
+best_models <- best_models %>% 
+  mutate(inlcude = ifelse(grepl("Type", predictors), TRUE, FALSE)) %>%
+  mutate(nearest_10 = round_any(as.numeric(minute), 10, round)) %>% 
+  group_by(nearest) %>%
+  mutate(include = if_else(sum(include) > n() / 2, TRUE, FALSE)) %>% 
+  select(nearest_10, include) %>% 
+  unique() 
+
 #Extract included timebins for use in later analyses
-#write.csv(formerging, "/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/data/identifiedminutes.csv")
+#merged_data(formerging, "data/identifiedminutes.csv")
+formerging <- fread("/Users/johanvandenhoogen/GitHub/Costa_Rica_PSA_Acoustic_Analysis/data/identifiedminutes.csv") %>% 
+  left_join(., forplotting, by = "nearest_10")
 
-merged_data <- forplotting %>%
-  left_join(formerging, by = c("nearest_10" = "nearest"))
-
-
+# merged_data <- forplotting %>%
+#   left_join(best_models, by = c("nearest_10" = "nearest"))
+merged_data %>% left_join(., formerging, by = c("nearest_10" = "nearest_10"))
 # Calculate y range for the markers based on the data
 y_min <- min(merged_data$MeanPMN, na.rm = TRUE)
 y_max <- max(merged_data$MeanPMN, na.rm = TRUE)
@@ -395,7 +383,6 @@ timemarker_data <- merged_data %>%
   distinct() %>%
   mutate(y_start = y_min - 0.02 * y_range,  # Slightly below the minimum MeanPMN
          y_end = y_max + 0.02 * y_range)     # Slightly above the maximum MeanPMN
-
 
 # Plot
 merged_data %>%
@@ -417,7 +404,7 @@ merged_data %>%
     axis.line = element_line(),
     axis.line.x = element_line(),
     axis.line.y = element_line(),
-    axis.ticks = element_line(color = "black"),
+    panel.grid = element_blank(),
     axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate the text on the X axis
   )
 
@@ -434,20 +421,16 @@ for (mins in minutesincluded) {
   }
 }
 
-# Visualization
-ggboxplot(ModellingData, x = "Type", y = "SummedPMN", group = "Minute", add = "jitter")
-
 ggplot(ModellingData, aes(x = as.factor(Minute), y = SummedPMN, fill = Type)) +
-  geom_boxplot(outlier.shape = NA) +  # This removes outlier points if they appear
+  geom_boxplot(outlier.shape = NA) +  
   labs(title = "Per-Minute Average by Treatment",
        x = "Minute",
        y = "Average Per Minute (avgPMN)",
        fill = "Treatment Type") +
   theme_minimal()
 
-
 # Averaging the values such that each Type has only one value per timebin, perform Friedman Statistical tests for repeated measures within groups
-quantify <- averagedmodellingdata %>% subset(select = c(MeanPMN, Type, nearest_10)) %>% unique()
+quantify <- averagedmodellingdata %>% select(MeanPMN, Type, nearest_10) %>% unique()
 friedman.test(MeanPMN~Type|nearest_10, data=quantify)
 pairwise.wilcox.test(quantify$MeanPMN, quantify$Type, p.adj = "bonf")
 
