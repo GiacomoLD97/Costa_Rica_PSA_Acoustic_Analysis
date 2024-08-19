@@ -47,7 +47,7 @@ averagedmodellingdata$PSA <- ifelse(grepl("Reference_Forest", averagedmodellingd
 ### 3. XGBOOST FOR SHAP WITH 10-MIN DATA AND BINARY TYPE CATEGORIES ##############################
 
 #Data
-xgpreddata <- averagedmodellingdata[,-c(1, 2, 11)]
+xgpreddata <- averagedmodellingdata[,-c(1, 2, 11, 16)]
 
 #Define response and features
 x <- colnames(xgpreddata)[-7]
@@ -84,16 +84,15 @@ fit_xgb <- xgb.train(
   nrounds = 10000 # early stopping
 )
 
-# Step 1: Select some observations
+
 X <- data.matrix(xgpreddata[sample(nrow(xgpreddata), 1000), x])
 
-# Step 2: Crunch SHAP values
 shap <- shap.prep(fit_xgb, X_train = X)
 
-# Step 3: SHAP importance
+# SHAP importance
 shap.plot.summary(shap)
 
-# Step 4: Loop over dependence plots in decreasing importance
+# Loop over dependence plots in decreasing importance
 for (v in shap.importance(shap, names_only = TRUE)) {
   p <- shap.plot.dependence(shap, v, color_feature = "auto", 
                             alpha = 0.5, jitter_width = 0.1) +
@@ -152,25 +151,17 @@ fit_xgb2 <- xgb.train(
 )
 
 
-
-#SHAP
-p_load(farff)
-p_load(OpenML)
-p_load(dplyr)
-p_load(ggplot2)
-p_load(SHAPforxgboost)
+#Unaggregated data?
 
 
-# Step 1: Select some observations
 X2 <- data.matrix(xg2[sample(nrow(xg2), 1000), x2])
 
-# Step 2: Crunch SHAP values
 shap2 <- shap.prep(fit_xgb2, X_train = X2)
 
-# Step 3: SHAP importance
+# SHAP plot
 shap.plot.summary(shap2)
 
-# Step 4: Loop over dependence plots in decreasing importance
+#  Loop over dependence plots in decreasing importance
 for (v in shap.importance(shap2, names_only = TRUE)) {
   p <- shap.plot.dependence(shap2, v, color_feature = "auto", 
                             alpha = 0.5, jitter_width = 0.1) +
@@ -223,16 +214,15 @@ fit_xgb3 <- xgb.train(
   nrounds = 10000 # early stopping
 )
 
-# Step 1: Select some observations
+
 X3 <- data.matrix(xgpreddata3[sample(nrow(xgpreddata3), 1000), x3])
 
-# Step 2: Crunch SHAP values
 shap3 <- shap.prep(fit_xgb3, X_train = X3)
 
-# Step 3: SHAP importance
+# SHAP importance plot
 shap.plot.summary(shap3)
 
-# Step 4: Loop over dependence plots in decreasing importance
+# Loop over dependence plots in decreasing importance
 for (v in shap.importance(shap3, names_only = TRUE)) {
   p <- shap.plot.dependence(shap3, v, color_feature = "auto", 
                             alpha = 0.5, jitter_width = 0.1) +

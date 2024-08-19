@@ -116,7 +116,7 @@ tmap_leaflet(site_map)
 
 
 
-### 4. FIGURE 2A, MODELS FOR EACH MINUTE WITH PREDICTIVE VARIABLES ##############################
+### 4. MODELS FOR EACH MINUTE WITH PREDICTIVE VARIABLES ##############################
 
 
 ### 4a. LOAD THE CLIMATIC/PREDICTIVE VARIABLES ##############################
@@ -442,7 +442,7 @@ varImpPlot(rfmodelopt)
 
 
 
-### 4e. LINEPLOT FOR SOUNDSCAPE TYPE WITH TIMES IDENTIFIED FROM 4d ##############################
+### 4e. FIGURE 2A: LINEPLOT FOR SOUNDSCAPE TYPE WITH TIMES IDENTIFIED FROM 4d ##############################
 
 df <- data.frame(nearest_10 = seq(0, 1440, by = 10), time_format = sprintf("%02d:%02d", seq(0, 1440, by = 10) %/% 60, seq(0, 1440, by = 10) %% 60))
 forplotting <- agg_data %>% subset(select = c(Minute, nearest_10, MeanPMN, Site, Type)) %>% unique()
@@ -461,18 +461,20 @@ type_colors <- c("Reference Forests" = "#228833",
 custom_order <- c("Reference Forests", "Natural Regeneration", "Plantation", "Pasture")
 forplotting$Type <- factor(forplotting$Type, levels = custom_order)
 
-#Add in results from model
-allbestmodels$include <- ifelse(grepl("Type", allbestmodels$predictors), TRUE, FALSE)
-allbestmodels$nearest <- as.numeric(rownames(allbestmodels))
-allbestmodels<-allbestmodels %>%
-  mutate(nearest = round_any(nearest, 10, round)) 
-formerging <- allbestmodels %>% subset(select = c(nearest, include))
-formerging <- formerging %>%
-  group_by(nearest) %>%
-  mutate(include = if_else(sum(include) > n() / 2, TRUE, FALSE)) %>% unique() 
+#Add in results from model -- Skip to line 477 and load the data if you have it already
+
+#allbestmodels$include <- ifelse(grepl("Type", allbestmodels$predictors), TRUE, FALSE)
+#allbestmodels$nearest <- as.numeric(rownames(allbestmodels))
+#allbestmodels<-allbestmodels %>%
+#  mutate(nearest = round_any(nearest, 10, round)) 
+#formerging <- allbestmodels %>% subset(select = c(nearest, include))
+#formerging <- formerging %>%
+ # group_by(nearest) %>%
+ # mutate(include = if_else(sum(include) > n() / 2, TRUE, FALSE)) %>% unique() 
 
 #Extract included timebins for use in later analyses
 #write.csv(formerging, "/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/data/identifiedminutes.csv")
+formerging <- read.csv("~/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/data/identifiedminutes.csv", row.names=1)
 
 merged_data <- forplotting %>%
   left_join(formerging, by = c("nearest_10" = "nearest"))
@@ -516,7 +518,49 @@ merged_data %>%
     axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate the text on the X axis
   )
 
-ggsave("/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/figures/Figure2A_lineplot.pdf")
+#As a circle
+# Define custom labels for sunrise and sunset
+custom_labels <- c("05:20" = "\n \n 05:20 \n  (Sunrise)", "18:00" = "   18:00 \n (Sunset)")
+
+# Generate regular labels
+regular_labels <- setNames(c(paste("0", 0:9, ":00", sep = ""), paste(10:24, ":00", sep = "")), 
+                           c(paste("0", 0:9, ":00", sep = ""), paste(10:24, ":00", sep = "")))
+
+#Remove the 5am label, otherwise too busy
+regular_labels <- regular_labels[-6]
+
+# Combine the custom labels with the regular labels
+all_labels <- c(regular_labels, custom_labels)
+
+# plot
+merged_data %>%
+  ggplot(aes(x = time_format, y = MeanPMN, group = Type, color = Type)) +
+  geom_line() +
+  geom_segment(
+    data = timemarker_data,
+    aes(x = time_format, xend = time_format, y = 450000, yend = 500000),
+    inherit.aes = FALSE,
+    color = "green",
+    alpha = 0.5,
+    linewidth = 1 
+  ) +
+  labs(x = "Time of Day", y = "Average ΣPMN") +
+  scale_color_manual(name = "Type", values = type_colors) +
+  scale_x_discrete(
+    breaks = names(all_labels),
+    labels = all_labels
+  ) +
+  theme_void() +
+  theme(
+    axis.text.x = element_text(size = 10, color = "black", family = "serif"),
+    axis.title.x = element_text(size = 12, family = "serif"),
+    panel.grid.major.x = element_line(colour = "grey", size = 0.1)
+  ) +
+  coord_radial(start = -0.7 * pi, end = 0.7 * pi, inner.radius = 0.2) 
+  
+ggsave("/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/figures/Figure2A_circleplot.pdf")
+
+
 
 ### 5. SIMPLY EVALUATE WHETHER THERE ARE SIGNIFICANT OVERALL DIFFERENCES BETWEEN SOUNDSCAPES ##############################
 

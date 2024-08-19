@@ -7,7 +7,7 @@ library(pacman)
 #Load other packages
 p_load(RColorBrewer)
 p_load(terra)
-p_load(gplyr)
+p_load(dplyr)
 p_load(ggplot2)
 p_load(purrr)
 p_load(RColorBrewer)
@@ -135,13 +135,59 @@ totalmammal <- FrequencyEstimates %>% subset(Annotation %in% c("Domestic", "Mamm
 
 wildmammal <- FrequencyEstimates %>% subset(Annotation == "Mammals") %>% nrow()
 
-wildmammal/totalmammal * 100
+propwild <- wildmammal/totalmammal * 100
 
 #31.82% of annotations are wild mammals, most are domestic and human
 
+#90% frequency ranges for each 
+
+quantile_ranges <- FrequencyEstimates %>% 
+  subset(Annotation %in% c("Mammals", "Humans", "Domestic")) %>%
+  group_by(Annotation) %>%
+  summarise(
+    Q05 = quantile(MidFreq, 0.05),
+    Q95 = quantile(MidFreq, 0.95)
+  )
+
+# Display the result
+print(quantile_ranges)
+
+#Quick plot with three low-frequency classes
+LowFreqGroupRanges <- FrequencyEstimates %>%
+  subset(Annotation %in% c("Mammals", "Humans", "Domestic"))
+
+LowFreqGroupRanges <- LowFreqGroupRanges %>% mutate(MidFreq = ((LowFreq + HighFreq)/2))
+
+LowFreqGroupRanges <- LowFreqGroupRanges %>%
+  mutate(density = case_when(
+    Annotation == "Humans" ~ 0.006,
+    Annotation == "Domestic" ~ 0.005,
+    Annotation == "Mammals" ~ 0.004,
+    ))
+
+LowFreqGroupRanges  %>%
+  ggplot(aes(x = MidFreq, fill = Annotation, color = Annotation)) +
+  geom_density(alpha = 0.5) +  
+  labs(
+    title = "Density of Call Frequencies by Taxonomic Group",
+    x = "Middle Frequency of Call",
+    y = "Density"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  geom_boxplot(
+    data = LowFreqGroupRanges, 
+    aes(x = MidFreq, y = density, color = Annotation),
+    fill = NA,           # Make the boxes hollow
+    outlier.shape = NA,  # Remove outlier points
+    width = 0.0002       # Make the boxes smaller
+  ) 
+
+
 #Filter for only four main classes, combine domestic into mammal
 
-ClassFrequencyEstimates <- FrequencyEstimates %>% subset(Annotation %in% c("Birds", "Insects", "Mammals", "Amphibians", "Domestic"))
+ClassFrequencyEstimates <- FrequencyEstimates %>% 
+  subset(Annotation %in% c("Birds", "Insects", "Mammals", "Amphibians", "Domestic"))
 ClassFrequencyEstimates$Annotation <- ifelse(grepl("dom", ClassFrequencyEstimates$Annotation, ignore.case = TRUE), "Mammals", ClassFrequencyEstimates$Annotation)
 
 #Add middle frequency column
@@ -266,4 +312,23 @@ summary(anova_Delta)
 print(tukey_Delta)
 #Highly statistically significant between all groups
 
+#90% quantiles by group
 
+quantile_ranges <- ClassFrequencyEstimates %>%
+  group_by(Annotation) %>%
+  summarise(
+    Q05 = quantile(MidFreq, 0.05),
+    Q95 = quantile(MidFreq, 0.95)
+  )
+
+print(quantile_ranges)
+
+#Biophony 90% range
+
+quantile_ranges <- ClassFrequencyEstimates %>%
+  summarise(
+    Q05 = quantile(MidFreq, 0.05),
+    Q95 = quantile(MidFreq, 0.95)
+  )
+
+print(quantile_ranges)
