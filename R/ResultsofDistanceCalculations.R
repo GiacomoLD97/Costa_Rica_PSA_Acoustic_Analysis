@@ -1,16 +1,9 @@
+rm(list = ls())
 
-### 1. LOAD PACKAGES ##############################
+library(ggpubr)
+library(tidyverse)
 
-#Pacman allows you to install and load (or just load) packages at once
-#install.packages(pacman)
-library(pacman)
-#Load other packages
-p_load(ggplot2)
-p_load(ggpubr)
-p_load(rstatix)
-p_load(stats)
-p_load(utils)
-
+#<<<<<<< HEAD
 ### 2. LOAD AND PROCESS DATA ##############################
 
 #Pastures 
@@ -47,8 +40,80 @@ colnames(Closesttypes)[3] <- "ClosesttoReference"
 Closesttypes %>% subset(select = ClosesttoReference) %>% count()
 #To Pasture
 Closesttypes %>% subset(select = ClosesttoPasture) %>% count()
+#=======
+### 2. LOAD AND REFORMAT DATA ##############################
+Dist2Pasture <- read.csv("data/wasserstein10min_freq_toPasture.csv")
 
+Nat2Past <- Dist2Pasture %>%
+  select(nearest_10, distance_nat, freq_category) %>%
+  mutate(Type = "Natural_Regeneration") %>%
+  rename(Timebin = nearest_10, Distance = distance_nat, FrequencyCat = freq_category)
 
+Ref2Past <- Dist2Pasture %>%
+  select(nearest_10, distance_ref, freq_category) %>%
+  mutate(Type = "Reference_Forest") %>%
+  rename(Timebin = nearest_10, Distance = distance_ref, FrequencyCat = freq_category)
+
+Plant2Past <- Dist2Pasture %>%
+  select(nearest_10, distance_plant, freq_category) %>%
+  mutate(Type = "Plantation") %>%
+  rename(Timebin = nearest_10, Distance = distance_plant, FrequencyCat = freq_category)
+
+Dist2PastRows <- bind_rows(Nat2Past, Ref2Past, Plant2Past)
+
+Dist2Reference <- read.csv("data/wasserstein10min_freq_toRefForest.csv")
+
+Nat2Ref <- Dist2Reference %>%
+  select(nearest_10, distance_nat, freq_category) %>%
+  mutate(Type = "Natural_Regeneration") %>%
+  rename(Timebin = nearest_10, Distance = distance_nat, FrequencyCat = freq_category)
+
+Past2Ref <- Dist2Reference %>%
+  select(nearest_10, distance_past, freq_category) %>%
+  mutate(Type = "Pasture") %>%
+  rename(Timebin = nearest_10, Distance = distance_past, FrequencyCat = freq_category)
+
+Plant2Ref <- Dist2Reference %>%
+  select(nearest_10, distance_plant, freq_category) %>%
+  mutate(Type = "Plantation") %>%
+  rename(Timebin = nearest_10, Distance = distance_plant, FrequencyCat = freq_category)
+
+Dist2RefRows <- bind_rows(Nat2Ref, Past2Ref, Plant2Ref)
+
+### 3. INITIAL VISUALIZE  ##############################
+
+# Average across all frequency band per timebin and then feed into a boxplot to get daily average distances
+
+Dist2RefRows %>% group_by(Timebin, Type) %>% mutate(meanDistance = mean(Distance)) %>% 
+  subset(select = -c(Distance, FrequencyCat)) %>% unique() %>% ungroup() %>% 
+  ggboxplot(., x = "Type", y = "meanDistance", add = "jitter")
+
+Dist2PastRows %>% group_by(Timebin, Type) %>% mutate(meanDistance = mean(Distance)) %>% 
+  subset(select = -c(Distance, FrequencyCat)) %>% unique() %>% ungroup() %>%
+  ggboxplot(., x = "Type", y = "meanDistance", add = "jitter")
+
+#Load included times from Modelling Script
+includedtimes <- read.csv("data/identifiedminutes.csv") %>% 
+  filter(include == "TRUE") %>% 
+  pull(nearest_10) %>% unique()
+
+# Use this to trim distance values to the region of acoustic space we're interested in
+TrimDist2Past <- Dist2PastRows %>%
+  filter(FrequencyCat %in% c("3-4 kHz", "4-5 kHz", "5-6 kHz", "6-7 kHz", "7-8 kHz", "8-9 kHz")) %>%
+  filter(Timebin %in% includedtimes) %>%
+  group_by(Timebin, Type) %>%
+  summarise(meanDistance = mean(Distance), .groups = 'drop') %>%
+  distinct()
+#>>>>>>> 8cdec5ccafbec51a7df95771d361d96709a6cafe
+
+TrimDist2Ref <- Dist2RefRows %>%
+  filter(FrequencyCat %in% c("3-4 kHz", "4-5 kHz", "5-6 kHz", "6-7 kHz", "7-8 kHz", "8-9 kHz")) %>%
+  filter(Timebin %in% includedtimes) %>%
+  group_by(Timebin, Type) %>%
+  summarise(meanDistance = mean(Distance), .groups = 'drop') %>%
+  distinct()
+
+#<<<<<<< HEAD
 #Dataframe for Distances to Pasture
 Dist2PastRows <- Dist2Pasture %>% subset(select = -Closest) %>% pivot_longer(Natural_Regeneration:Plantation, names_to = "Type", values_to = "Distance")
 #Dataframe for Distances to Reference
@@ -87,6 +152,18 @@ DistPlant <- merge(DistPlant, temp, by = c("Timebin", "FrequencyCat"))
 DistPlant <- DistPlant %>% mutate(DistDiff = ifelse(DistancetoRef < DistancetoPast, 
                                                       ((DistancetoPast-DistancetoRef)/DistancetoRef)*100, 
                                                       ((DistancetoPast-DistancetoRef)/DistancetoPast)*100))
+#=======
+# Plot
+# Distances to Pasture
+ggplot(TrimDist2Past, aes(Timebin, meanDistance, color = Type)) + geom_point()
+ggboxplot(TrimDist2Past, x = "Type", y = "meanDistance", add = "jitter")
+
+# Distances to Reference
+ggplot(TrimDist2Ref, aes(Timebin, meanDistance, color = Type)) + geom_point()
+ggboxplot(TrimDist2Ref, x = "Type", y = "meanDistance", add = "jitter")
+
+### 4. QUANTIFICATIONS AND STATISTICAL TESTS  ##############################
+#>>>>>>> 8cdec5ccafbec51a7df95771d361d96709a6cafe
 
 #Our dataframes of interest are as follows:
 # For distances to baselines: Dist2RefRows, Dist2PastRows
@@ -134,6 +211,7 @@ pwc.Ref <- Dist2RefRows %>% group_by(Type, Timebin) %>% mutate(meanSimilarity = 
 pwc.Ref
 
 
+#<<<<<<< HEAD
 
 #Testing for significance in distance to baseline within interventions
 #Natural Regeneration
@@ -200,12 +278,63 @@ Dist2RefRows %>%
   geom_jitter(aes(color = Period), position = position_jitter(0.2)) +
   geom_text(data = means_df, aes(x = Type, y = 0.76, label = paste("Mean", round(meanSimilarity, 2), sep=": ")), 
             color = "black") +  # Add means as text along the same line
+#=======
+#Is Pasture/Ref distance higher with low frequencies included?
+PasttoRefall <- Dist2PastRows %>%
+  filter(Type == "Natural_Regeneration") %>%
+  mutate(Split = "All")
+
+PasttoRefupper <- PasttoRefall %>%
+  filter(!FrequencyCat %in% c("0-1 kHz", "1-2 kHz", "2-3 kHz")) %>%
+  mutate(Split = "Upper")
+
+PasttoRefall %>% get_summary_stats(Distance, type = "mean_sd")
+PasttoRefupper %>% get_summary_stats(Distance, type = "mean_sd")
+
+PasttoRef <- rbind(PasttoRefall, PasttoRefupper)
+
+t.test(Distance~Split, data = PasttoRef)
+#Yes, showing that including the lower frequencies overestimates the differences between the two soundscapes
+
+#We can see that distances peak in the lowest and middle freuencies
+ggboxplot(PasttoRef, x = "FrequencyCat", y = "Distance", add = "jitter")
+
+### 5. FIGURE 3B  ##############################
+#group times into periods of the day to visualize where distances are largest 
+# Max distance is used to scale the distances for visualization
+maxdist <- max(TrimDist2Ref$meanDistance)
+
+TrimDist2Ref <- TrimDist2Ref %>%
+  mutate(
+    Period = case_when(
+      Timebin >= 290 & Timebin <= 350 ~ "Dawn",
+      Timebin >= 1050 & Timebin <= 1110 ~ "Dusk",
+      Timebin > 350 & Timebin < 1050 ~ "Day",
+      TRUE ~ "Night"
+    ),
+    ScaledDistance = meanDistance / maxdist,
+    Type = ifelse(grepl("Nat", Type, ignore.case = TRUE), "Natural Regeneration", Type),
+    Type = factor(Type, levels = c("Natural Regeneration", "Plantation", "Pasture"))
+  )
+
+#redo statistical tests and plot
+results.fried.Ref <- TrimDist2Ref %>% friedman_test(ScaledDistance~Type|Timebin)
+pwc.Ref <- TrimDist2Ref %>% wilcox_test(as.formula(paste("ScaledDistance", "Type", sep="~")), paired = TRUE, p.adjust.method = "bonferroni")
+
+pwc.Ref <- pwc.Ref %>% add_xy_position(x = "Type")
+
+ggboxplot(TrimDist2Ref, x = "Type", y = "ScaledDistance", add = "boxplot") +
+  geom_jitter(aes(color = Period), 
+              alpha = 0.5,
+              position = position_jitter(0.2)) +
+#>>>>>>> 8cdec5ccafbec51a7df95771d361d96709a6cafe
   stat_pvalue_manual(pwc.Ref, hide.ns = TRUE) +
   labs(
     x = "Intervention Type",
     y = "Scaled Similarity",
     subtitle = get_test_label(results.fried.Ref, detailed = TRUE),
     caption = get_pwc_label(pwc.Ref)
+#<<<<<<< HEAD
   ) +
   ggtitle("Similarity to Reference Forests")
 
@@ -248,3 +377,7 @@ Dist2PastRows %>%
   ) +
   ggtitle("Similarity to Pastures")
 
+#=======
+
+ggsave('figures/Figure3B_boxplot.pdf')
+#>>>>>>> 8cdec5ccafbec51a7df95771d361d96709a6cafe

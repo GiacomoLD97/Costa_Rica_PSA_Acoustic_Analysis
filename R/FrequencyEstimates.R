@@ -1,5 +1,9 @@
+rm(list = ls())
 
+library(RColorBrewer)
+library(tidyverse)
 
+#<<<<<<< HEAD
 ### 1. LOAD PACKAGES ##############################
 #Pacman allows you to install and load (or just load) packages at once
 #install.packages(pacman)
@@ -13,129 +17,37 @@ p_load(purrr)
 p_load(RColorBrewer)
 p_load(stats)
 p_load(utils)
+#=======
+### 2. LOAD AND CLEAN LABEL DATA ##############################
+FrequencyEstimates <- read.csv('data/FrequencyEstimates.csv')
+#>>>>>>> 8cdec5ccafbec51a7df95771d361d96709a6cafe
 
-### 2. LOAD AND PROCESS ALL THE SELECTION DATA ##############################
-
-#Pastures
-DayPasture <- list()
-setwd("/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/data/Raven_selections/Pasture/DAY")
-files <- dir()
-
-for (i in 1:length(files)) {
-  DayPasture[[i]] <- read.delim(paste(getwd(), files[i], sep = "/"))
-}
-DayPastureFrequencies <- list_rbind(DayPasture)
-DayPastureFrequencies <- DayPastureFrequencies %>% subset( select = -c(Selection, View, Channel))
-colnames(DayPastureFrequencies) <- c("StartTime", "EndTime", "LowFreq", "HighFreq", "DeltaTime", "DeltaFreq", "AvgPowerDensity", "Annotation")
-
-NightPasture <- list()
-setwd("/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/data/Raven_selections/Pasture/NIGHT")
-files <- dir()
-
-for (i in 1:length(files)) {
-  NightPasture[[i]] <- read.delim(paste(getwd(), files[i], sep = "/"))
-}
-NightPastureFrequencies <- list_rbind(NightPasture)
-NightPastureFrequencies <- NightPastureFrequencies %>% subset( select = -c(Selection, View, Channel))
-colnames(NightPastureFrequencies) <- c("StartTime", "EndTime", "LowFreq", "HighFreq", "DeltaTime", "DeltaFreq", "AvgPowerDensity", "Annotation")
-
-#Reference Forest
-DayReference_Forest <- list()
-setwd("/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/data/Raven_selections/reference forest/DAY")
-files <- dir()
-
-for (i in 1:length(files)) {
-  DayReference_Forest[[i]] <- read.delim(paste(getwd(), files[i], sep = "/"))
-}
-DayReference_ForestFrequencies <- list_rbind(DayReference_Forest)
-DayReference_ForestFrequencies <- DayReference_ForestFrequencies %>% subset( select = -c(Selection, View, Channel))
-colnames(DayReference_ForestFrequencies) <- c("StartTime", "EndTime", "LowFreq", "HighFreq", "DeltaTime", "DeltaFreq", "AvgPowerDensity", "Annotation")
-
-NightReference_Forest <- list()
-setwd("/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/data/Raven_selections/reference forest/NIGHT")
-files <- dir()
-
-for (i in 1:length(files)) {
-  NightReference_Forest[[i]] <- read.delim(paste(getwd(), files[i], sep = "/"))
-}
-NightReference_ForestFrequencies <- list_rbind(NightReference_Forest)
-NightReference_ForestFrequencies <- NightReference_ForestFrequencies %>% subset( select = -c(Selection, View, Channel))
-colnames(NightReference_ForestFrequencies) <- c("StartTime", "EndTime", "LowFreq", "HighFreq", "DeltaTime", "DeltaFreq", "AvgPowerDensity", "Annotation")
-
-#Natural Regeneration
-DayNatural_Regeneration <- list()
-setwd("/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/data/Raven_selections/PSA/conservation/DAY")
-files <- dir()
-
-for (i in 1:length(files)) {
-  DayNatural_Regeneration[[i]] <- read.delim(paste(getwd(), files[i], sep = "/"))
-}
-DayNatural_RegenerationFrequencies <- list_rbind(DayNatural_Regeneration)
-DayNatural_RegenerationFrequencies <- DayNatural_RegenerationFrequencies %>% subset( select = -c(Selection, View, Channel))
-colnames(DayNatural_RegenerationFrequencies) <- c("StartTime", "EndTime", "LowFreq", "HighFreq", "DeltaTime", "DeltaFreq", "AvgPowerDensity", "Annotation")
-
-NightNatural_Regeneration <- list()
-setwd("/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/data/Raven_selections/PSA/conservation/NIGHT")
-files <- dir()
-
-for (i in 1:length(files)) {
-  NightNatural_Regeneration[[i]] <- read.delim(paste(getwd(), files[i], sep = "/"))
-}
-NightNatural_RegenerationFrequencies <- list_rbind(NightNatural_Regeneration)
-NightNatural_RegenerationFrequencies <- NightNatural_RegenerationFrequencies %>% subset( select = -c(Selection, View, Channel))
-colnames(NightNatural_RegenerationFrequencies) <- c("StartTime", "EndTime", "LowFreq", "HighFreq", "DeltaTime", "DeltaFreq", "AvgPowerDensity", "Annotation")
-
-#Plantations
-DayPlantation <- list()
-setwd("/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/data/Raven_selections/PSA/reforestation/DAY")
-files <- dir()
-
-for (i in 1:length(files)) {
-  DayPlantation[[i]] <- read.delim(paste(getwd(), files[i], sep = "/"))
-}
-DayPlantationFrequencies <- list_rbind(DayPlantation)
-DayPlantationFrequencies <- DayPlantationFrequencies %>% subset( select = -c(Selection, View, Channel))
-colnames(DayPlantationFrequencies) <- c("StartTime", "EndTime", "LowFreq", "HighFreq", "DeltaTime", "DeltaFreq", "AvgPowerDensity", "Annotation")
-
-NightPlantation <- list()
-setwd("/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/data/Raven_selections/PSA/reforestation/NIGHT")
-files <- dir()
-
-for (i in 1:length(files)) {
-  NightPlantation[[i]] <- read.delim(paste(getwd(), files[i], sep = "/"))
-}
-NightPlantationFrequencies <- list_rbind(NightPlantation)
-NightPlantationFrequencies <- NightPlantationFrequencies %>% subset( select = -c(Selection, View, Channel))
-colnames(NightPlantationFrequencies) <- c("StartTime", "EndTime", "LowFreq", "HighFreq", "DeltaTime", "DeltaFreq", "AvgPowerDensity", "Annotation")
-
-#Now combine them all into a single dataframe
-
-FrequencyEstimates <- rbind(DayPastureFrequencies, NightPastureFrequencies, DayReference_ForestFrequencies, NightReference_ForestFrequencies, DayNatural_RegenerationFrequencies, NightNatural_RegenerationFrequencies, DayPlantationFrequencies, NightPlantationFrequencies)
-
-
-### 3. CLEAN AND PROPERLY LABEL DATA ##############################
-
-unique(FrequencyEstimates$Annotation)
-
-FrequencyEstimates$Annotation <- ifelse(grepl("ins", FrequencyEstimates$Annotation, ignore.case = TRUE), "Insects", FrequencyEstimates$Annotation)
-FrequencyEstimates$Annotation <- ifelse(grepl("inns", FrequencyEstimates$Annotation, ignore.case = TRUE), "Insects", FrequencyEstimates$Annotation)
-FrequencyEstimates$Annotation <- ifelse(grepl("bir", FrequencyEstimates$Annotation, ignore.case = TRUE), "Birds", FrequencyEstimates$Annotation)
-FrequencyEstimates$Annotation <- ifelse(grepl("dom", FrequencyEstimates$Annotation, ignore.case = TRUE), "Domestic", FrequencyEstimates$Annotation)
-FrequencyEstimates$Annotation <- ifelse(grepl("mamm", FrequencyEstimates$Annotation, ignore.case = TRUE), "Mammals", FrequencyEstimates$Annotation)
-FrequencyEstimates$Annotation <- ifelse(grepl("ins", FrequencyEstimates$Annotation, ignore.case = TRUE), "Insects", FrequencyEstimates$Annotation)
-FrequencyEstimates$Annotation <- ifelse(grepl("amph", FrequencyEstimates$Annotation, ignore.case = TRUE), "Amphibians", FrequencyEstimates$Annotation)
-FrequencyEstimates$Annotation <- ifelse(grepl("bat", FrequencyEstimates$Annotation, ignore.case = TRUE), "Unknown", FrequencyEstimates$Annotation)
-FrequencyEstimates$Annotation <- ifelse(grepl("unk", FrequencyEstimates$Annotation, ignore.case = TRUE), "Unknown", FrequencyEstimates$Annotation)
-FrequencyEstimates$Annotation <- ifelse(grepl("v", FrequencyEstimates$Annotation, ignore.case = TRUE), "Unknown", FrequencyEstimates$Annotation)
-FrequencyEstimates$Annotation[FrequencyEstimates$Annotation== ""] <- "Unknown"
+FrequencyEstimates <- FrequencyEstimates %>%
+  mutate(
+    Annotation = case_when(
+      str_detect(Annotation, regex("ins", ignore_case = TRUE)) ~ "Insects",
+      str_detect(Annotation, regex("inns", ignore_case = TRUE)) ~ "Insects",
+      str_detect(Annotation, regex("bir", ignore_case = TRUE)) ~ "Birds",
+      str_detect(Annotation, regex("dom", ignore_case = TRUE)) ~ "Domestic",
+      str_detect(Annotation, regex("mamm", ignore_case = TRUE)) ~ "Mammals",
+      str_detect(Annotation, regex("amph", ignore_case = TRUE)) ~ "Amphibians",
+      str_detect(Annotation, regex("bat", ignore_case = TRUE)) ~ "Unknown",
+      str_detect(Annotation, regex("unk", ignore_case = TRUE)) ~ "Unknown",
+      str_detect(Annotation, regex("v", ignore_case = TRUE)) ~ "Unknown",
+      Annotation == "" ~ "Unknown",
+      TRUE ~ Annotation
+    )
+  )
 
 # Proportion of domestic mammal and human noises that make up the mammal calls
-
 totalmammal <- FrequencyEstimates %>% subset(Annotation %in% c("Domestic", "Mammals", "Humans")) %>% nrow()
-
 wildmammal <- FrequencyEstimates %>% subset(Annotation == "Mammals") %>% nrow()
+#<<<<<<< HEAD
 
 propwild <- wildmammal/totalmammal * 100
+#=======
+wildmammal/totalmammal * 100
+#>>>>>>> 8cdec5ccafbec51a7df95771d361d96709a6cafe
 
 #31.82% of annotations are wild mammals, most are domestic and human
 
@@ -185,25 +97,30 @@ LowFreqGroupRanges  %>%
 
 
 #Filter for only four main classes, combine domestic into mammal
+#<<<<<<< HEAD
 
 ClassFrequencyEstimates <- FrequencyEstimates %>% 
   subset(Annotation %in% c("Birds", "Insects", "Mammals", "Amphibians", "Domestic"))
 ClassFrequencyEstimates$Annotation <- ifelse(grepl("dom", ClassFrequencyEstimates$Annotation, ignore.case = TRUE), "Mammals", ClassFrequencyEstimates$Annotation)
 
+#=======
+#>>>>>>> 8cdec5ccafbec51a7df95771d361d96709a6cafe
 #Add middle frequency column
-
-ClassFrequencyEstimates <- ClassFrequencyEstimates %>% mutate(MidFreq = ((LowFreq + HighFreq)/2))
+FrequencyEstimates <- FrequencyEstimates %>%
+  filter(Annotation %in% c("Birds", "Insects", "Mammals", "Amphibians", "Domestic")) %>%
+  mutate(Annotation = ifelse(str_detect(Annotation, regex("dom", ignore_case = TRUE)),
+                             "Mammals",
+                             Annotation)) %>% 
+  mutate(MidFreq = ((LowFreq + HighFreq)/2)) %>% 
+  mutate(Annotation = factor(Annotation, levels = c("Mammals", "Amphibians", "Birds", "Insects")))
 
 ### 4. FIGURE 2B VISUALIZE THE FREQUENCY RANGES ##############################
 
-#Use Spectral color palette
+# Use Spectral color palette
 custom_colors <- rev(brewer.pal(4, "Spectral"))
 
-#Set levels of factor for labelling
-ClassFrequencyEstimates$Annotation <- factor(ClassFrequencyEstimates$Annotation, levels=c("Mammals", "Amphibians", "Birds", "Insects"))
-
-#Add meaningless column for mapping
-ClassFrequencyEstimates <- ClassFrequencyEstimates %>%
+# Add dummy column for mapping
+FrequencyEstimates <- FrequencyEstimates %>%
   mutate(density = case_when(
     Annotation == "Mammals" ~ 0.0032,
     Annotation == "Amphibians" ~ 0.0024,
@@ -212,40 +129,29 @@ ClassFrequencyEstimates <- ClassFrequencyEstimates %>%
     TRUE ~ NA_real_
   ))
 
-#Plot
-ClassFrequencyEstimates %>% 
+# Plot
+FrequencyEstimates %>% 
   ggplot(aes(x = MidFreq, fill = Annotation, color = Annotation)) +
   geom_density(alpha = 0.5) +  
-  labs(
-    title = "Density of Call Frequencies by Taxonomic Group",
-    x = "Middle Frequency of Call",
-    y = "Density"
-  ) +
-  scale_x_continuous(
-    breaks = seq(0, 15000, by = 1000),  # Set x-axis breaks every 1000 units
-    limits = c(0, 15000)                # Limit x-axis to 0-15,000
-  ) +
-  scale_fill_manual(values = custom_colors) +  # Set custom fill colors from the "spectral" palette
-  scale_color_manual(values = custom_colors) +  # Set custom line colors from the "spectral" palette
-  theme_minimal() +
+  labs(x = "Middle Frequency of Call", y = "Density") +
+  scale_x_continuous(breaks = seq(0, 15000, by = 1000),
+                     limits = c(0, 15000)) +
+  scale_fill_manual(values = custom_colors) + 
+  scale_color_manual(values = custom_colors) +  
+  theme_bw() +
   theme(legend.position = "top") +
   geom_boxplot(
-    data = ClassFrequencyEstimates, 
+    data = FrequencyEstimates,
     aes(x = MidFreq, y = density, color = Annotation),
-    fill = NA,           # Make the boxes hollow
-    outlier.shape = NA,  # Remove outlier points
-    width = 0.0002       # Make the boxes smaller
-  ) +
-  geom_vline(xintercept = c(0, 9000), colour="lightgreen", linetype = "longdash")
+    fill = NA,      
+    outlier.shape = NA, 
+    width = 0.0002  
+  ) 
+  # geom_vline(xintercept = c(0, 9000), colour="lightgreen", linetype = "longdash")
 
+ggsave('figures/Figure2B_DensityandBox_v2.pdf')
 
-ggsave('/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/figures/Figure2B_DensityandBox.pdf')
-
-#Warnings because of few outlier points above 15,000 Hz
-
-
-### 5. DO TAXANOMIC GROUPS HAVE SIGNIFICANTLY DIFFERENT FREQUENCY RANGES? ##############################
-
+### 5. Check if taxonomic groups have significantly different frequency ranges #################
 
 # Low frequency
 # Perform ANOVA
@@ -311,6 +217,7 @@ summary(anova_Delta)
 # View post-hoc test results
 print(tukey_Delta)
 #Highly statistically significant between all groups
+#<<<<<<< HEAD
 
 #90% quantiles by group
 
@@ -332,3 +239,5 @@ quantile_ranges <- ClassFrequencyEstimates %>%
   )
 
 print(quantile_ranges)
+#=======
+#>>>>>>> 8cdec5ccafbec51a7df95771d361d96709a6cafe
