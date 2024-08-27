@@ -25,20 +25,9 @@ site_map <- tm_shape(st_as_sf(sitesincluded, coords = c("Longitude", "Latitude")
   tm_legend(legend.show = FALSE)
 tmap_leaflet(site_map)
 
-#<<<<<<< HEAD
-
-
-
-
-
-
-
-
-
 ### 4. MODELS FOR EACH MINUTE WITH PREDICTIVE VARIABLES ##############################
 #=======
 ### 4. FIGURE 2A, MODELS FOR EACH MINUTE WITH PREDICTIVE VARIABLES ##############################
-#>>>>>>> 8cdec5ccafbec51a7df95771d361d96709a6cafe
 
 ### 4a. LOAD THE CLIMATIC/PREDICTIVE VARIABLES ##############################
 
