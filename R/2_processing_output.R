@@ -7,7 +7,7 @@ library(tidyverse)
 sitesincluded <- list.files('output/')
 
 
-#Remove files that failed quality check
+#Remove files that failed manual quality check
 toremove <- c("RFX16_31052022_PSA0202-2016", "RFX37_30052022_PSA0098-2013", "RFX38_03062022_RefForest3",
               "ZH11_03062022_PSA0161-2017", "RFX26_03062022_PSA0156-2015", "RFX39_22062022_PSA0166-2010")
 
