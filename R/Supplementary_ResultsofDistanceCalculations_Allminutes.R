@@ -1,3 +1,5 @@
+#Trying the comparison with all the minutes
+
 rm(list = ls())
 
 ### 1. Load Required Packages ##############################
@@ -22,16 +24,18 @@ colnames(Dist2Reference) <- c("Timebin", "Natural_Regeneration", "Pasture", "Pla
 
 #Trim
 selectedfreqs <- c("1-2 kHz", "2-3 kHz", "3-4 kHz", "4-5 kHz", "5-6 kHz", "6-7 kHz", "7-8 kHz", "8-9 kHz")
-includedtimes <- read.csv("/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/data/identifiedminutes.csv") %>% 
-  subset(select = nearest_10) 
-includedtimes <- includedtimes[,1]
+
+#Not removing any times
+#includedtimes <- read.csv("/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/data/identifiedminutes.csv") %>% 
+#  subset(select = nearest_10) 
+#includedtimes <- includedtimes[,1]
 
 Dist2Pasture <- Dist2Pasture %>%
-  subset(FrequencyCat %in% selectedfreqs) %>% 
-  subset(Timebin %in% includedtimes) 
+  subset(FrequencyCat %in% selectedfreqs)#%>% 
+  #subset(Timebin %in% includedtimes) 
 Dist2Reference <- Dist2Reference %>%
-  subset(FrequencyCat %in% selectedfreqs) %>% 
-  subset(Timebin %in% includedtimes) 
+  subset(FrequencyCat %in% selectedfreqs) #%>% 
+  #subset(Timebin %in% includedtimes) 
 
 #Dataframe for Distances to Pasture
 Dist2PastRows <- Dist2Pasture %>% subset(select = -Closest) %>% pivot_longer(Natural_Regeneration:Plantation, names_to = "Type", values_to = "Distance")

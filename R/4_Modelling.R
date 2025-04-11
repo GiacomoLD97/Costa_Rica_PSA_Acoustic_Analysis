@@ -178,7 +178,7 @@ VIF.COR@excluded
 ### 3b. LMER Modelling per Minute #############################
 
 # START HERE IF YOU HAVE THE DATAFRAME, data not uploaded to GitHub, too large
-ModellingData <- fread("data/ModellingDataForFigure2oct2023.csv")
+ModellingData <- fread("data/ModellingData.csv")
 
 # List to store output
 best_models <- list()

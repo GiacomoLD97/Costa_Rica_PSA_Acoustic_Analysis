@@ -1,6 +1,6 @@
 rm(list = ls())
 library(data.table)
-library(plyr)
+library(dplyr)
 library(lubridate)
 library(patchwork)
 library(scales)
@@ -32,7 +32,7 @@ df <- #fread('data/site_freq_data_full.csv') %>%
 # Summarise data by type and write to file
 df_type_summary <- df %>%
   group_by(Type, Minute, freq_category) %>%
-  summarise(
+  dplyr::summarise(
     mean_PMN = mean(sum_PMN, na.rm = TRUE))
 
 fwrite(df_type_summary, 'data/site_freq_data_perType_summarised.csv')
@@ -40,16 +40,64 @@ df_type_summary <- fread('data/site_freq_data_perType_summarised.csv')
 
 # Plot by types, for each frequency bin
 p <- df_type_summary %>% 
+  subset(freq_category %in% c('0-1 kHz', '1-2 kHz', '2-3 kHz', '3-4 kHz', '4-5 kHz', '5-6 kHz', '6-7 kHz', '7-8 kHz', '8-9 kHz')) %>%
   # filter(Minute >= 285 & Minute <= 320) %>% 
-  mutate(order = factor(freq_category, levels=labels)) %>% 
-  ggplot(aes(x = Minute, y = mean_PMN, color = Type)) + 
+  mutate(nearest_10 = round_any(Minute, 10, round)) %>%
+  group_by(freq_category, Type, nearest_10) %>%
+  dplyr::summarise(ten_mean_PMN = mean(mean_PMN)) %>%
+  ggplot(aes(x = nearest_10, y = ten_mean_PMN, color = Type)) + 
   scale_color_manual(values = c("#4477AA", "#CCBB44", "#EE6677", "#228833")) +
   # geom_ribbon(aes(ymin = mean_PMN - sd_PMN, ymax = mean_PMN + sd_PMN), color = NA, alpha = 0.3) +
-  geom_line() +  facet_wrap(~ order) +
+  geom_line() +  facet_wrap(~ freq_category) +
   theme_minimal() +
-  ylab("Mean Power-minus-Noise") 
+  ylab("Mean Power-minus-Noise")  +
+  xlab("Minute of the Day")
 
-ggsave('figures/pmn_per_bin.pdf', plot = p)
+p
+#ggsave('figures/pmn_per_bin.pdf', plot = p)
+
+#Post revisions version, adding in the means standard error and frequency 0-1 and 4-5 (was misssing previously)
+fig2a <- df %>% 
+  subset(freq_category %in% c('0-1 kHz', '1-2 kHz', '2-3 kHz', '3-4 kHz', '4-5 kHz', '5-6 kHz', '6-7 kHz', '7-8 kHz', '8-9 kHz')) %>%
+  mutate(nearest_10 = round_any(Minute, 10, round)) %>%
+  
+  # Modify Type variable
+  mutate(Type = factor(Type,
+                       levels = c("Reference_Forest", "Natural_Regeneration", "Plantation", "Pasture"),
+                       labels = c("Reference Forest", "Natural Regeneration", "Plantation", "Pasture"))) %>%
+  
+  group_by(freq_category, Type, nearest_10) %>%
+  dplyr::summarise(
+    ten_mean_PMN = mean(sum_PMN),
+    sd_PMN = sd(sum_PMN),
+    n = n(),
+    se_PMN = sd_PMN/sqrt(n),
+    lower = ten_mean_PMN - se_PMN,  # Using SD instead of SE for more visible bands
+    upper = ten_mean_PMN + se_PMN
+  ) %>%
+  
+  ggplot(aes(x = nearest_10, y = ten_mean_PMN, color = Type, fill = Type)) + 
+  scale_color_manual(values = c("#228833", "#4477AA", "#EE6677", "#CCBB44")) +
+  scale_fill_manual(values = c("#228833", "#4477AA", "#EE6677", "#CCBB44")) +
+  
+  # Ribbon with more visible parameters
+  geom_ribbon(aes(ymin = lower, ymax = upper), 
+              color = NA,  # No border color
+              alpha = 0.4, # More transparency
+              linetype = 0) + # No border line
+  
+  geom_line(linewidth = 0.3) +  # Make lines slightly thicker
+  facet_wrap(~ freq_category) +
+  theme_minimal() +
+  ylab("Mean Power-minus-Noise") +
+  xlab("Minute of the Day") +
+  labs(color = "Type", fill = "Type")  # Consistent legend titles
+
+fig2a
+ggsave('figures/Figure2A_perfreqbin.pdf', plot = fig2a)
+
+###
+
 
 df_summarised_10min <- df %>%
   # filter(freq_category %in% c('5-6 kHz', '6-7 kHz', '7-8 kHz', '8-9 kHz')) %>%
@@ -62,7 +110,7 @@ df_summarised_10min <- df %>%
 
 wasserstein10min <- fread('data/wasserstein_dist_results_10minavg.csv')
 
-p1 <- df_summarised_10min %>% 
+p1 <- df_summarised_10min %>%
   ggplot(aes(x = tod, y = mean_PMN, color = Type)) + 
   geom_line(linewidth = 0.8) +  
   theme_classic() +
