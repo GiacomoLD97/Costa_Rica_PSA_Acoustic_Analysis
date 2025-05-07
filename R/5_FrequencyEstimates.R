@@ -13,6 +13,7 @@ p_load(purrr)
 p_load(RColorBrewer)
 p_load(stats)
 p_load(utils)
+p_load(stringr)
 
 
 
@@ -82,7 +83,7 @@ ClassFrequencyEstimates %>%
   theme_bw() +
   theme(legend.position = "top") +
   geom_boxplot(
-    data = FrequencyEstimates,
+    data = ClassFrequencyEstimates,
     aes(x = MidFreq, y = density, color = Annotation),
     fill = NA,      
     outlier.shape = NA, 
@@ -90,7 +91,7 @@ ClassFrequencyEstimates %>%
   ) +
   geom_vline(xintercept = c(1000, 9000), colour="black", linetype = "longdash")
 
-ggsave('figures/SuppFigure3B_DensityandBox.pdf')
+#ggsave('figures/SuppFigure3B_DensityandBox.pdf')
 
 ### 4. Check if taxonomic groups have significantly different frequency ranges #################
 

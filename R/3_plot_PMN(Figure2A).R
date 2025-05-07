@@ -11,6 +11,8 @@ library(tidyverse)
 `%notin%` <- Negate(`%in%`)
 breaks <- c(0, seq(1, 24))
 labels <- paste0(head(breaks, -1), "-", tail(breaks, -1), " kHz")
+round_any = function(x, accuracy, f=round){f(x/ accuracy) * accuracy}
+
 
 type_table <- #fread('data/sites_type_table.csv')
   fread("~/Downloads/site_freq_data_full.csv")
@@ -24,7 +26,7 @@ type_table <- #fread('data/sites_type_table.csv')
 # fwrite(df, '/Users/johanvandenhoogen/ETH/Projects/costa_rica/site_freq_data_full.csv')
 
 df <- #fread('data/site_freq_data_full.csv') %>% 
-  fread("~/Downloads/site_freq_data_full.csv") %>%
+  fread("/Users/giacomodelgado/Documents/PhD Chapter 1/Data not in GitHub/site_freq_data_full.csv") %>%
   mutate(Type = ifelse(Type == "", NA, Type)) %>% 
   na.omit() %>% 
   filter(Minute %notin% c(385, 386, 1080)) 
@@ -35,7 +37,7 @@ df_type_summary <- df %>%
   dplyr::summarise(
     mean_PMN = mean(sum_PMN, na.rm = TRUE))
 
-fwrite(df_type_summary, 'data/site_freq_data_perType_summarised.csv')
+#fwrite(df_type_summary, 'data/site_freq_data_perType_summarised.csv')
 df_type_summary <- fread('data/site_freq_data_perType_summarised.csv')
 
 # Plot by types, for each frequency bin
@@ -94,7 +96,7 @@ fig2a <- df %>%
   labs(color = "Type", fill = "Type")  # Consistent legend titles
 
 fig2a
-ggsave('figures/Figure2A_perfreqbin.pdf', plot = fig2a)
+#ggsave('figures/Figure2A_perfreqbin.pdf', plot = fig2a)
 
 ###
 
@@ -110,34 +112,62 @@ df_summarised_10min <- df %>%
 
 wasserstein10min <- fread('data/wasserstein_dist_results_10minavg.csv')
 
-p1 <- df_summarised_10min %>%
-  ggplot(aes(x = tod, y = mean_PMN, color = Type)) + 
+### Figure 3B #####
+
+forplot_summarised_10min <- df %>%
+  filter(freq_category %in% c('3-4 kHz', '4-5 kHz', '5-6 kHz', '6-7 kHz', '7-8 kHz', '8-9 kHz')) %>%
+  mutate(nearest_10 = round_any(Minute, 10, round)) %>% 
+  group_by(Type, nearest_10) %>%
+  dplyr::summarise(
+    mean_PMN = mean(sum_PMN, na.rm = TRUE),
+    sem_PMN  = sd(sum_PMN, na.rm = TRUE) / sqrt(n()),  # Standard Error
+    .groups = "drop"
+  ) %>% 
+  mutate(tod = as.POSIXct("2023-12-13 00:00:00") + minutes(nearest_10))
+
+p1 <- forplot_summarised_10min %>%
+  ggplot(aes(x = tod, y = mean_PMN, color = Type, fill = Type)) +  # Added `fill` aesthetic
   geom_line(linewidth = 0.8) +  
+  geom_ribbon(
+    aes(ymin = mean_PMN - sem_PMN, ymax = mean_PMN + sem_PMN),
+    alpha = 0.15,    # Subtle transparency
+    color = NA,      # No border lines
+    show.legend = FALSE  # Avoid duplicate legend
+  ) +
   theme_classic() +
   theme(strip.background = element_blank()) +
   scale_x_datetime(labels = date_format("%H:%M", tz = "Europe/Amsterdam"), date_minor_breaks = "hour") +
   ylab("Mean Power-minus-Noise") + xlab("Time of Day") +
-  scale_color_manual(values = c("#4477AA", "#CCBB44", "#EE6677", "#228833"), 
-                     breaks = c("Natural_Regeneration", "Pasture", "Plantation", "Reference_Forest"), 
-                     labels = c("Natural Regeneration", "Pasture", "Plantation", "Reference Forest"),
-                     # guide = 'none'
-                     ) +
-  # geom_col(data = wasserstein10min %>%
-  #            rename(Type = closest_type) %>%
-  #            mutate(tod = as.POSIXct("2023-12-13 00:00:00") + minutes(nearest_10)),
-  #          aes(x = tod, y = 10000, fill = Type), inherit.aes = FALSE) +
-  scale_fill_manual(values = c("#4477AA", "#CCBB44", "#EE6677", "#228833"), 
-                    guide = 'none') +
+  scale_color_manual(
+    values = c("#4477AA", "#CCBB44", "#EE6677", "#228833"), 
+    breaks = c("Natural_Regeneration", "Pasture", "Plantation", "Reference_Forest"), 
+    labels = c("Natural Regeneration", "Pasture", "Plantation", "Reference Forest")
+  ) +
+  scale_fill_manual(
+    values = c("#4477AA", "#CCBB44", "#EE6677", "#228833"), 
+    guide = 'none'
+  ) +
   scale_y_continuous(labels = scales::comma, limits = c(1e5, 8.5e5)) +
   guides(color = guide_legend(position = "inside")) +
-  theme(legend.position.inside = c(0.8, 0.9),
-        legend.title = element_blank()) +
-geom_vline(color = 'grey50', xintercept = as.POSIXct("2023-12-13 00:00:00") + minutes(315), linetype = 'dashed', linewidth = 0.5) +
-geom_vline(color = 'grey50', xintercept = as.POSIXct("2023-12-13 00:00:00") + minutes(1070), linetype = 'dashed', linewidth = 0.5)
-
+  theme(
+    legend.position.inside = c(0.8, 0.9),
+    legend.title = element_blank()
+  ) +
+  geom_vline(
+    color = 'grey50', 
+    xintercept = as.POSIXct("2023-12-13 00:00:00") + minutes(315), 
+    linetype = 'dashed', 
+    linewidth = 0.5
+  ) +
+  geom_vline(
+    color = 'grey50', 
+    xintercept = as.POSIXct("2023-12-13 00:00:00") + minutes(1070), 
+    linetype = 'dashed', 
+    linewidth = 0.5
+  )
 p1
 
-ggsave('figures/fig3_draft.pdf', p1, width = 6, height = 5, dpi = 300)
+ggsave('figures/Figure3B_closestlineplots.pdf', plot = p1)
 
 # legend <- cowplot::get_legend(p1)
 

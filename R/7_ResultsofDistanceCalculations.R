@@ -12,9 +12,9 @@ library(rstatix)
 ### 2.1 Distances to Baseline and Scaling ##############################
 
 #Pastures 
-Dist2Pasture <- read.csv("/Users/giacomodelgado/Downloads/wasserstein10min_freq_toPasture.csv")
+Dist2Pasture <- read.csv("/Users/giacomodelgado/Documents/GitHub/Costa_Rica_PSA_Acoustic_Analysis/wasserstein10min_freq_toPasture.csv")
 #Reference Forest
-Dist2Reference <- read.csv("/Users/giacomodelgado/Downloads/wasserstein10min_freq_toRefForest.csv")
+Dist2Reference <- read.csv("/Users/giacomodelgadoDocuments/GitHub/Costa_Rica_PSA_Acoustic_Analysis/wasserstein10min_freq_toRefForest.csv")
 
 #Rename
 colnames(Dist2Pasture) <- c("Timebin", "Natural_Regeneration", "Reference_Forest", "Plantation", "Closest", "FrequencyCat")
@@ -192,19 +192,26 @@ Dist2RefRows %>%
   )) %>%
   subset(select = c(Type, meanSimilarity, Period)) %>% 
   unique() %>% 
-  ggboxplot(x = "Type", y = "meanSimilarity", add = "boxplot") +
+  ggplot(aes(x = Type, y = meanSimilarity)) +
+  geom_jitter(aes(color = Period), position = position_jitter(0.2), alpha = 0.7) +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 4, color = "black") +
+  stat_summary(fun = mean, geom = "errorbar", 
+               aes(ymax = ..y.., ymin = ..y..), 
+               width = 0.5, linetype = "solid", color = "black") +
+  geom_text(data = means_df, aes(x = Type, y = 0.76, 
+                                 label = paste("Mean", round(meanSimilarity, 2), sep=": ")), 
+            color = "black") +
   scale_x_discrete(label = labels) +
-  geom_jitter(aes(color = Period), position = position_jitter(0.2)) +
-  geom_text(data = means_df, aes(x = Type, y = 0.76, label = paste("Mean", round(meanSimilarity, 2), sep=": ")), 
-            color = "black") +  # Add means as text along the same line
   stat_pvalue_manual(pwc.Ref, hide.ns = TRUE) +
   labs(
     x = "Intervention Type",
     y = "Scaled Similarity",
     subtitle = get_test_label(results.fried.Ref, detailed = TRUE),
     caption = get_pwc_label(pwc.Ref)
-  ) 
-#ggsave('figures/Figure3A_boxplot.pdf')
+  ) +
+  theme_classic2()
+
+#ggsave('figures/Figure3A_stripplot.pdf')
 
 ### 5.2 Possible extra supplementary figure 4 ##############################
 

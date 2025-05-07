@@ -178,7 +178,7 @@ VIF.COR@excluded
 ### 3b. LMER Modelling per Minute #############################
 
 # START HERE IF YOU HAVE THE DATAFRAME, data not uploaded to GitHub, too large
-ModellingData <- fread("data/ModellingData.csv")
+ModellingData <- fread("/Users/giacomodelgado/Documents/PhD Chapter 1/Data not in GitHub/ModellingData.csv")
 
 # List to store output
 best_models <- list()
@@ -346,16 +346,23 @@ shap.plot.summary(shap)
 
 ### 4. Supplementary Figure 3A  #############################
 
+formerging <- fread("data/identifiedminutes.csv")
+
 agg_data <- ModellingData %>%
   mutate(nearest_10 = round_any(Minute, 10, round)) %>%
   dplyr::group_by(Type, nearest_10) %>%
-  mutate(MeanPMN = mean(SummedPMN), MeanNoise = mean(SummedNoise)) %>%
-  ungroup() 
+  mutate(
+    MeanPMN    = mean(SummedPMN),
+    SEM_PMN    = sd(SummedPMN) / sqrt(n()),
+    MeanNoise  = mean(SummedNoise),
+    SEM_Noise  = sd(SummedNoise) / sqrt(n())
+  ) %>%
+  ungroup()
 
 forplotting <- data.frame(nearest_10 = seq(0, 1440, by = 10), time_format = sprintf("%02d:%02d", seq(0, 1440, by = 10) %/% 60, seq(0, 1440, by = 10) %% 60)) %>% 
   left_join(., agg_data, by = "nearest_10") %>% 
   mutate(Type = factor(Type, levels = c("Reference_Forest", "Natural_Regeneration", "Plantation", "Pasture"))) %>% 
-  subset(select = c(time_format, nearest_10, MeanPMN, Type)) %>% 
+  subset(select = c(time_format, nearest_10, MeanPMN, Type, SEM_PMN)) %>% 
   unique()
 
 merged_data <- forplotting %>%
@@ -384,6 +391,14 @@ type_colors <- c("Reference_Forest" = "#228833",
 merged_data %>%
   ggplot(aes(x = time_format, y = MeanPMN, group = Type, color = Type)) +
   geom_line() +
+  # Add shaded error band (mean ± SEM)
+  geom_ribbon(
+    aes(ymin = MeanPMN - SEM_PMN, ymax = MeanPMN + SEM_PMN, fill = Type),
+    alpha = 0.2,  # Transparency
+    color = NA,    # No border line
+    show.legend = FALSE  # Avoid duplicate legend entries
+  ) +
+  # Your existing timemarker and styling
   geom_segment(
     data = timemarker_data,
     aes(x = time_format, xend = time_format, y = 520000, yend = 570000),
@@ -393,19 +408,17 @@ merged_data %>%
     linewidth = 3 
   ) +
   labs(x = "Time of Day", y = "Mean ΣPMN") +
-  scale_x_discrete(breaks = c(paste("0", 0:9, ":00", sep = ""), paste(10:23, ":00", sep = ""))) +
+  scale_x_discrete(breaks = c(paste0("0", 0:9, ":00"), paste(10:23, ":00", sep = ""))) +
   scale_color_manual(name = "Type", values = type_colors) +
+  scale_fill_manual(values = type_colors) +  # Match ribbon fill to line colors
   theme_minimal() +
   theme(
     axis.line = element_line(),
-    axis.line.x = element_line(),
-    axis.line.y = element_line(),
     panel.grid = element_blank(),
-    axis.text.x = element_text(angle = 45, hjust = 1)  # Rotate the text on the X axis
+    axis.text.x = element_text(angle = 45, hjust = 1)
   )
 
 ggsave("figures/SuppFigure3A_lineplot.pdf")
-
 
 ### 5. Overall Differences Between Soundscape Types ##############################
 
